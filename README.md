@@ -18,8 +18,8 @@ A more powerful JSONPath implementations in modern python.
 
 - [x] Light. (No need to install third-party dependencies.)
 - [ ] Support fields-extractor.
-- [ ] Support multi-selection and inverse-selection filtering.
-- [ ] Support sorting by multiple fields, ascending and descending order.
+- [ ] Powerful filtering function, including multi-selection, inverse-selection filtering.
+- [ ] Powerful sorting function, including sorting by multiple fields, ascending and descending order.
 
 ## Examples
 

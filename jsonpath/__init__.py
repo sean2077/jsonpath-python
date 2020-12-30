@@ -2,7 +2,7 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2020-12-30 17:28:02
+LastEditTime : 2020-12-30 17:39:37
 Description  : JSONPath
 """
 __version__ = "1.0.0"
@@ -34,8 +34,6 @@ REP_DOT = re.compile(r"(?<!\.)\.(?!\.)")
 REP_FILTER = re.compile(r"\[(\??\(.*?\))\]")
 REP_SORT = re.compile(r"\[[\\|/](.*?),\]")
 
-LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
 
 # pylint: disable=invalid-name,missing-function-docstring,missing-class-docstring
 
@@ -56,10 +54,8 @@ class JSONPath:
     subx = defaultdict(list)
     ops: list
     oplen: int
-    debug: int
 
-    def __init__(self, expr: str, *, result_type="VALUE", debug=0):
-
+    def __init__(self, expr: str, *, result_type="VALUE"):
         if result_type not in RESULT_TYPE:
             raise ValueError(f"result_type must be one of {tuple(RESULT_TYPE.keys())}")
         self.result_type = result_type
@@ -70,10 +66,9 @@ class JSONPath:
         self.ops = expr.split(SEP)
         self.oplen = len(self.ops)
 
-        self.debug = debug
-
     def _parse_expr(self, expr):
-        LOG.debug("before expr: %s", expr)
+        if __debug__:
+            print(f"before expr: {expr}")
 
         expr = REP_PICKUP_QUOTE.sub(self._f_pickup_quote, expr)
         expr = REP_PICKUP_BRACKET.sub(self._f_pickup_bracket, expr)
@@ -84,7 +79,8 @@ class JSONPath:
         if expr.startswith("$;"):
             expr = expr[2:]
 
-        LOG.debug("before expr: %s", expr)
+        if __debug__:
+            print(f"after  expr: {expr}")
         return expr
 
     def _f_pickup_quote(self, m):
@@ -178,4 +174,4 @@ if __name__ == "__main__":
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
     # JSONPath("$.book[1].title").parse(d)
-    JSONPath("$.*").parse(d)
+    JSONPath("$..price").parse(d)

@@ -2,7 +2,7 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2020-12-30 17:16:18
+LastEditTime : 2020-12-30 17:28:02
 Description  : JSONPath
 """
 __version__ = "1.0.0"
@@ -13,7 +13,7 @@ import logging
 import os
 import re
 import sys
-from typing import Any, Dict, Iterable, Union
+from typing import Any, Dict, Iterable
 from collections import defaultdict
 
 RESULT_TYPE = {
@@ -33,8 +33,11 @@ REP_DOUBLEDOTS = re.compile(r"\.\.")
 REP_DOT = re.compile(r"(?<!\.)\.(?!\.)")
 REP_FILTER = re.compile(r"\[(\??\(.*?\))\]")
 REP_SORT = re.compile(r"\[[\\|/](.*?),\]")
-_DEBUG = os.getenv("PYTHONDEBUG")
+
 LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
+
+# pylint: disable=invalid-name,missing-function-docstring,missing-class-docstring
 
 
 def concat(x, y, con=SEP):
@@ -46,7 +49,6 @@ class ExprSyntaxError(Exception):
 
 
 class JSONPath:
-
     # annotations
     result: Iterable
     result_type: str
@@ -54,8 +56,9 @@ class JSONPath:
     subx = defaultdict(list)
     ops: list
     oplen: int
+    debug: int
 
-    def __init__(self, expr: str, *, result_type="VALUE"):
+    def __init__(self, expr: str, *, result_type="VALUE", debug=0):
 
         if result_type not in RESULT_TYPE:
             raise ValueError(f"result_type must be one of {tuple(RESULT_TYPE.keys())}")
@@ -67,25 +70,21 @@ class JSONPath:
         self.ops = expr.split(SEP)
         self.oplen = len(self.ops)
 
+        self.debug = debug
+
     def _parse_expr(self, expr):
-        print(f"before expr: {expr}")
+        LOG.debug("before expr: %s", expr)
 
         expr = REP_PICKUP_QUOTE.sub(self._f_pickup_quote, expr)
-        # print(expr)
         expr = REP_PICKUP_BRACKET.sub(self._f_pickup_bracket, expr)
-        # print(expr)
         expr = REP_DOUBLEDOTS.sub(f"{SEP}..{SEP}", expr)
-        # print(expr)
         expr = REP_DOT.sub(SEP, expr)
-        # print(expr)
         expr = REP_PUTBACK_BRACKET.sub(self._f_putback_bracket, expr)
-        # print(expr)
         expr = REP_PUTBACK_QUOTE.sub(self._f_putback_quote, expr)
-        # print(expr)
         if expr.startswith("$;"):
             expr = expr[2:]
 
-        print(f"after  expr: {expr}")
+        LOG.debug("before expr: %s", expr)
         return expr
 
     def _f_pickup_quote(self, m):

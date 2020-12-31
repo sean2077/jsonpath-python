@@ -2,7 +2,7 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2020-12-31 18:05:36
+LastEditTime : 2020-12-31 18:14:16
 Description  : JSONPath
 """
 __version__ = "1.0.0"
@@ -10,8 +10,7 @@ __author__ = "zhangxianbing"
 
 import json
 import re
-import sys
-from typing import Any, Dict, Iterable
+from typing import Union
 from collections import defaultdict
 
 RESULT_TYPE = {
@@ -62,7 +61,7 @@ class ExprSyntaxError(Exception):
 
 class JSONPath:
     # annotations
-    result: Iterable
+    result: Union[list, dict]
     result_type: str
     subx = defaultdict(list)
     steps: list

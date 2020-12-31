@@ -47,6 +47,12 @@ prices = [8.95, 12.99, 8.99, 22.99, 19.95]
         TestCase("$.'a.b c'", data, [data["a.b c"]]),
         TestCase("$['a.b c']", data, [data["a.b c"]]),
         TestCase("$..price", data, prices),
+        TestCase("$.book[1:3]", data, data["book"][1:3]),
+        TestCase("$.book[1:-1]", data, data["book"][1:-1]),
+        TestCase("$.book[0:-1:2]", data, data["book"][0:-1:2]),
+        TestCase("$.book[-1:1]", data, data["book"][-1:1]),
+        TestCase("$.book[-1:-11:3]", data, data["book"][-1:-11:3]),
+        TestCase("$.book[:]", data, data["book"][:]),
     ]
 )
 def cases(request):

@@ -2,15 +2,13 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2020-12-31 11:07:08
+LastEditTime : 2020-12-31 14:18:23
 Description  : JSONPath
 """
 __version__ = "1.0.0"
 __author__ = "zhangxianbing"
 
 import json
-import logging
-import os
 import re
 import sys
 from typing import Any, Dict, Iterable
@@ -29,11 +27,14 @@ REP_PICKUP_QUOTE = re.compile(r"['\"](.*?)['\"]")
 REP_PICKUP_BRACKET = re.compile(r"[\[](.*?)[\]]")
 REP_PUTBACK_QUOTE = re.compile(r"#Q(\d+)")
 REP_PUTBACK_BRACKET = re.compile(r"#B(\d+)")
-REP_DOUBLEDOTS = re.compile(r"\.\.")
+REP_DOUBLEDOT = re.compile(r"\.\.")
 REP_DOT = re.compile(r"(?<!\.)\.(?!\.)")
-REP_FILTER = re.compile(r"\[(\??\(.*?\))\]")
-REP_SORT = re.compile(r"\[[\\|/](.*?),\]")
 
+
+REP_SLICE_CONTENT = re.compile(r"^(-?\d*)?:(-?\d*)?(:-?\d*)?$")
+REP_SELECT_CONTENT = re.compile(r"^([^,]+)(,[^,]+)+$")
+# operators
+REP_UNION_OP = re.compile(r"(?<!\\),")
 
 # pylint: disable=invalid-name,missing-function-docstring,missing-class-docstring
 
@@ -52,8 +53,8 @@ class JSONPath:
     result_type: str
     caller_globals: Dict[str, Any]
     subx = defaultdict(list)
-    ops: list
-    oplen: int
+    steps: list
+    lpath: int
 
     def __init__(self, expr: str, *, result_type="VALUE"):
         if result_type not in RESULT_TYPE:
@@ -63,9 +64,9 @@ class JSONPath:
 
         # parse expression
         expr = self._parse_expr(expr)
-        self.ops = expr.split(SEP)
-        self.oplen = len(self.ops)
-        print(f"operations  : {self.ops}")
+        self.steps = expr.split(SEP)
+        self.lpath = len(self.steps)
+        print(f"steps  : {self.steps}")
 
     def _parse_expr(self, expr):
         if __debug__:
@@ -73,7 +74,7 @@ class JSONPath:
 
         expr = REP_PICKUP_QUOTE.sub(self._f_pickup_quote, expr)
         expr = REP_PICKUP_BRACKET.sub(self._f_pickup_bracket, expr)
-        expr = REP_DOUBLEDOTS.sub(f"{SEP}..{SEP}", expr)
+        expr = REP_DOUBLEDOT.sub(f"{SEP}..{SEP}", expr)
         expr = REP_DOT.sub(SEP, expr)
         expr = REP_PUTBACK_BRACKET.sub(self._f_putback_bracket, expr)
         expr = REP_PUTBACK_QUOTE.sub(self._f_putback_quote, expr)
@@ -109,14 +110,9 @@ class JSONPath:
         else:
             self.result = []
 
-        self._operate(obj, 0)
+        self._trace(obj, 0)
 
         return self.result
-
-    def _op(self, i):
-        if i < self.oplen:
-            return self.ops[i]
-        return None
 
     def _traverse(self, f, obj, idx: int):
         if isinstance(obj, list):
@@ -126,7 +122,7 @@ class JSONPath:
             for k, v in obj.items():
                 f(v, idx)
 
-    def _operate(self, obj, idx: int):
+    def _trace(self, obj, istep: int):
         """Perform operation on object.
 
         Args:
@@ -135,39 +131,56 @@ class JSONPath:
         """
 
         # store
-        if idx >= self.oplen:
+        if istep >= self.lpath:
             self.result.append(obj)
             print(obj)
             return
 
-        op = self.ops[idx]
+        step = self.steps[istep]
 
         # wildcard
-        if op == "*":
-            self._traverse(self._operate, obj, idx + 1)
+        if step == "*":
+            self._traverse(self._trace, obj, istep + 1)
+            return
 
         # recursive descent
-        elif op == "..":
-            self._operate(obj, idx + 1)
-            self._traverse(self._operate, obj, idx)
-
-        # get value from dict
-        elif isinstance(obj, dict) and op in obj:
-            self._operate(obj[op], idx + 1)
+        if step == "..":
+            self._trace(obj, istep + 1)
+            self._traverse(self._trace, obj, istep)
+            return
 
         # get value from list
-        elif isinstance(obj, list) and op.isdigit():
-            ikey = int(op)
+        if isinstance(obj, list) and step.isdigit():
+            ikey = int(step)
             if ikey < len(obj):
-                self._operate(obj[ikey], idx + 1)
+                self._trace(obj[ikey], istep + 1)
+            return
 
-        # elif key.startswith("?(") and key.endswith(")"):  # filter
+        # get value from dict
+        if isinstance(obj, dict) and step in obj:
+            self._trace(obj[step], istep + 1)
+            return
+
+        # slice
+        if isinstance(obj, list) and REP_SLICE_CONTENT.fullmatch(step):
+            vals = eval(f"obj[{step}]")
+            for v in vals:
+                self._trace(v, istep + 1)
+            return
+
+        # select
+        if isinstance(obj, dict) and REP_SELECT_CONTENT.fullmatch(step):
+            for k in step.split(","):
+                if k in obj:
+                    self._trace(obj[k], istep + 1)
+            return
+
+        # filter
+        # elif key.startswith("?(") and key.endswith(")"):
         #     pass
 
-        # elif key:  # sort
-        #     pass
-
-        # elif key:  # slice
+        # sort
+        # elif key:
         #     pass
 
 
@@ -175,5 +188,5 @@ if __name__ == "__main__":
     # JSONPath("$.a.'b.c'.'d e'.[f,g][h][*][j.k][l m][2:4]..d", result_type="FIELD")
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
-    # JSONPath("$.book[1].title").parse(d)
-    JSONPath("$..price").parse(d)
+    JSONPath("$.book[1:3].title").parse(d)
+    # JSONPath("$..price").parse(d)

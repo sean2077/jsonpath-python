@@ -2,7 +2,7 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2020-12-31 17:02:04
+LastEditTime : 2020-12-31 18:05:36
 Description  : JSONPath
 """
 __version__ = "1.0.0"
@@ -30,13 +30,10 @@ REP_PUTBACK_BRACKET = re.compile(r"#B(\d+)")
 REP_DOUBLEDOT = re.compile(r"\.\.")
 REP_DOT = re.compile(r"(?<!\.)\.(?!\.)")
 
-
+# operators
 REP_SLICE_CONTENT = re.compile(r"^(-?\d*)?:(-?\d*)?(:-?\d*)?$")
 REP_SELECT_CONTENT = re.compile(r"^([\w.]+)(,[\w.]+)+$")
-# operators
-REP_UNION_OP = re.compile(r"(?<!\\),")
-
-REP_FILTER_FIELD = re.compile(
+REP_FILTER_CONTENT = re.compile(
     r"@\.(.*?)(?=<=|>=|==|!=|>|<| in| not| is)|len\(@\.(.*?)\)"
 )
 
@@ -45,6 +42,18 @@ REP_FILTER_FIELD = re.compile(
 
 def concat(x, y, con=SEP):
     return f"{x}{con}{y}"
+
+
+def _getattr(obj: dict, path: str):
+    r = obj
+    for k in path.split("."):
+        try:
+            r = r.get(k)
+        except (AttributeError, KeyError) as err:
+            print(err)
+            return None
+
+    return r
 
 
 class ExprSyntaxError(Exception):
@@ -150,7 +159,7 @@ class JSONPath:
 
         Args:
             obj ([type]): current operating object
-            idx (int): current operation specified by index in self.ops
+            istep (int): current operation specified by index in self.steps
         """
 
         # store
@@ -201,20 +210,32 @@ class JSONPath:
         # filter
         if step.startswith("?(") and step.endswith(")"):
             step = step[2:-1]
-            step = REP_FILTER_FIELD.sub(self._f_brackets, step)
+            step = REP_FILTER_CONTENT.sub(self._f_brackets, step)
             self._traverse(self._filter, obj, istep + 1, step)
             return
 
         # sort
-        # elif key:
-        #     pass
+        if step.startswith("/(") and step.endswith(")"):
+            if isinstance(obj, list):
+                step = step[2:-1]
+                for sortby in step.split(",")[::-1]:
+                    if sortby.startswith("~"):
+                        obj.sort(
+                            key=lambda t, k=sortby: _getattr(t, k[1:]), reverse=True
+                        )
+                    else:
+                        obj.sort(key=lambda t, k=sortby: _getattr(t, k))
+
+            self._traverse(self._trace, obj, istep + 1)
+            return
 
 
 if __name__ == "__main__":
     # JSONPath("$.a.'b.c'.'d e'.[f,g][h][*][j.k][l m][2:4]..d", result_type="FIELD")
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
-    JSONPath(
-        '$.book[?(@.title=="Herman Melville" or @.title=="Evelyn Waugh")].title'
-    ).parse(d)
+    # JSONPath(
+    #     '$.book[?(@.title=="Herman Melville" or @.title=="Evelyn Waugh")].title'
+    # ).parse(d)
     # JSONPath("$..price").parse(d)
+    JSONPath("$.book[/(price)].price").parse(d)

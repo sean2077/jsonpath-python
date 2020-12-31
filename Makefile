@@ -11,7 +11,7 @@ uninstall:
 	pip uninstall jsonpath
 
 test:
-	pytest tests -vv -s
+	pytest test -vv -s
 
 clean:
 	rm -rf $(PYCACHE_DIR) ${PYTEST_DIR}

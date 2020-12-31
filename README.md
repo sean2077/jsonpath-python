@@ -21,6 +21,10 @@ A more powerful JSONPath implementations in modern python.
 - [ ] Powerful filtering function, including multi-selection, inverse-selection filtering.
 - [ ] Powerful sorting function, including sorting by multiple fields, ascending and descending order.
 
+## Issues
+
+- Not support parent operator.
+
 ## Examples
 
 JSON format data:

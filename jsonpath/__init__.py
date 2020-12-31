@@ -2,7 +2,7 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2020-12-30 17:39:37
+LastEditTime : 2020-12-31 11:07:08
 Description  : JSONPath
 """
 __version__ = "1.0.0"
@@ -65,10 +65,11 @@ class JSONPath:
         expr = self._parse_expr(expr)
         self.ops = expr.split(SEP)
         self.oplen = len(self.ops)
+        print(f"operations  : {self.ops}")
 
     def _parse_expr(self, expr):
         if __debug__:
-            print(f"before expr: {expr}")
+            print(f"before expr : {expr}")
 
         expr = REP_PICKUP_QUOTE.sub(self._f_pickup_quote, expr)
         expr = REP_PICKUP_BRACKET.sub(self._f_pickup_bracket, expr)
@@ -80,7 +81,7 @@ class JSONPath:
             expr = expr[2:]
 
         if __debug__:
-            print(f"after  expr: {expr}")
+            print(f"after expr  : {expr}")
         return expr
 
     def _f_pickup_quote(self, m):
@@ -108,7 +109,7 @@ class JSONPath:
         else:
             self.result = []
 
-        self._trace(obj, 0)
+        self._operate(obj, 0)
 
         return self.result
 
@@ -117,10 +118,21 @@ class JSONPath:
             return self.ops[i]
         return None
 
-    def _trace(self, obj, idx, op=None):
-        # obj - 当前处理对象
-        # idx - 当前操作在操作集中的序号
-        # op - 覆盖idx指定操作的操作
+    def _traverse(self, f, obj, idx: int):
+        if isinstance(obj, list):
+            for i, v in enumerate(obj):
+                f(v, idx)
+        elif isinstance(obj, dict):
+            for k, v in obj.items():
+                f(v, idx)
+
+    def _operate(self, obj, idx: int):
+        """Perform operation on object.
+
+        Args:
+            obj ([type]): current operating object
+            idx (int): current operation specified by index in self.ops
+        """
 
         # store
         if idx >= self.oplen:
@@ -128,36 +140,26 @@ class JSONPath:
             print(obj)
             return
 
-        op = op or self.ops[idx]
+        op = self.ops[idx]
 
-        # getall
+        # wildcard
         if op == "*":
-            if isinstance(obj, list):
-                for i, v in enumerate(obj):
-                    self._trace(v, idx + 1)
-            elif isinstance(obj, dict):
-                for k, v in obj.items():
-                    self._trace(v, idx + 1)
+            self._traverse(self._operate, obj, idx + 1)
 
-        # traverse
+        # recursive descent
         elif op == "..":
-            self._trace(obj, idx + 1)
-            if isinstance(obj, list):
-                for i, v in enumerate(obj):
-                    self._trace(v, idx + 1, "..")
-            elif isinstance(obj, dict):
-                for k, v in obj.items():
-                    self._trace(v, idx + 1, "..")
+            self._operate(obj, idx + 1)
+            self._traverse(self._operate, obj, idx)
 
         # get value from dict
         elif isinstance(obj, dict) and op in obj:
-            self._trace(obj[op], idx + 1)
+            self._operate(obj[op], idx + 1)
 
         # get value from list
         elif isinstance(obj, list) and op.isdigit():
             ikey = int(op)
             if ikey < len(obj):
-                self._trace(obj[ikey], idx + 1)
+                self._operate(obj[ikey], idx + 1)
 
         # elif key.startswith("?(") and key.endswith(")"):  # filter
         #     pass

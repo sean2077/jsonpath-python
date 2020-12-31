@@ -36,6 +36,8 @@ data = {
     "bicycle": {"color": "red", "price": 19.95},
 }
 
+prices = [8.95, 12.99, 8.99, 22.99, 19.95]
+
 
 @pytest.fixture(
     params=[
@@ -44,6 +46,7 @@ data = {
         TestCase("$[book]", data, [data["book"]]),
         TestCase("$.'a.b c'", data, [data["a.b c"]]),
         TestCase("$['a.b c']", data, [data["a.b c"]]),
+        TestCase("$..price", data, prices),
     ]
 )
 def cases(request):

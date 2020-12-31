@@ -2,7 +2,7 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2020-12-31 14:18:23
+LastEditTime : 2020-12-31 17:02:04
 Description  : JSONPath
 """
 __version__ = "1.0.0"
@@ -23,7 +23,7 @@ RESULT_TYPE = {
 
 SEP = ";"
 # regex patterns
-REP_PICKUP_QUOTE = re.compile(r"['\"](.*?)['\"]")
+REP_PICKUP_QUOTE = re.compile(r"['](.*?)[']")
 REP_PICKUP_BRACKET = re.compile(r"[\[](.*?)[\]]")
 REP_PUTBACK_QUOTE = re.compile(r"#Q(\d+)")
 REP_PUTBACK_BRACKET = re.compile(r"#B(\d+)")
@@ -32,11 +32,15 @@ REP_DOT = re.compile(r"(?<!\.)\.(?!\.)")
 
 
 REP_SLICE_CONTENT = re.compile(r"^(-?\d*)?:(-?\d*)?(:-?\d*)?$")
-REP_SELECT_CONTENT = re.compile(r"^([^,]+)(,[^,]+)+$")
+REP_SELECT_CONTENT = re.compile(r"^([\w.]+)(,[\w.]+)+$")
 # operators
 REP_UNION_OP = re.compile(r"(?<!\\),")
 
-# pylint: disable=invalid-name,missing-function-docstring,missing-class-docstring
+REP_FILTER_FIELD = re.compile(
+    r"@\.(.*?)(?=<=|>=|==|!=|>|<| in| not| is)|len\(@\.(.*?)\)"
+)
+
+# pylint: disable=invalid-name,missing-function-docstring,missing-class-docstring,eval-used
 
 
 def concat(x, y, con=SEP):
@@ -51,7 +55,6 @@ class JSONPath:
     # annotations
     result: Iterable
     result_type: str
-    caller_globals: Dict[str, Any]
     subx = defaultdict(list)
     steps: list
     lpath: int
@@ -60,7 +63,6 @@ class JSONPath:
         if result_type not in RESULT_TYPE:
             raise ValueError(f"result_type must be one of {tuple(RESULT_TYPE.keys())}")
         self.result_type = result_type
-        self.caller_globals = sys._getframe(1).f_globals
 
         # parse expression
         expr = self._parse_expr(expr)
@@ -101,6 +103,17 @@ class JSONPath:
     def _f_putback_bracket(self, m):
         return self.subx["#B"][int(m.group(1))]
 
+    @staticmethod
+    def _f_notvar(m):
+        return f"{m.group(1)} not in __obj"
+
+    @staticmethod
+    def _f_brackets(m):
+        ret = "__obj"
+        for e in m.group(1).split("."):
+            ret += '["%s"]' % e
+        return ret
+
     def parse(self, obj):
         if not isinstance(obj, (list, dict)):
             raise TypeError("obj must be a list or a dict.")
@@ -114,13 +127,23 @@ class JSONPath:
 
         return self.result
 
-    def _traverse(self, f, obj, idx: int):
+    @staticmethod
+    def _traverse(f, obj, istep: int, *args):
         if isinstance(obj, list):
-            for i, v in enumerate(obj):
-                f(v, idx)
+            for v in obj:
+                f(v, istep, *args)
         elif isinstance(obj, dict):
-            for k, v in obj.items():
-                f(v, idx)
+            for v in obj.values():
+                f(v, istep, *args)
+
+    def _filter(self, obj, istep: int, step):
+        r = False
+        try:
+            r = eval(step, None, {"__obj": obj})
+        except Exception as err:
+            print(err)
+        if r:
+            self._trace(obj, istep)
 
     def _trace(self, obj, istep: int):
         """Perform operation on object.
@@ -176,8 +199,11 @@ class JSONPath:
             return
 
         # filter
-        # elif key.startswith("?(") and key.endswith(")"):
-        #     pass
+        if step.startswith("?(") and step.endswith(")"):
+            step = step[2:-1]
+            step = REP_FILTER_FIELD.sub(self._f_brackets, step)
+            self._traverse(self._filter, obj, istep + 1, step)
+            return
 
         # sort
         # elif key:
@@ -188,5 +214,7 @@ if __name__ == "__main__":
     # JSONPath("$.a.'b.c'.'d e'.[f,g][h][*][j.k][l m][2:4]..d", result_type="FIELD")
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
-    JSONPath("$.book[1:3].title").parse(d)
+    JSONPath(
+        '$.book[?(@.title=="Herman Melville" or @.title=="Evelyn Waugh")].title'
+    ).parse(d)
     # JSONPath("$..price").parse(d)

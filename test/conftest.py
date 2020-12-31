@@ -53,6 +53,18 @@ prices = [8.95, 12.99, 8.99, 22.99, 19.95]
         TestCase("$.book[-1:1]", data, data["book"][-1:1]),
         TestCase("$.book[-1:-11:3]", data, data["book"][-1:-11:3]),
         TestCase("$.book[:]", data, data["book"][:]),
+        TestCase("$.book[?(@.price>8 and @.price<9)].price", data, [8.95, 8.99]),
+        TestCase('$.book[?(@.category=="reference")].category', data, ["reference"]),
+        TestCase(
+            '$.book[?(@.category!="reference" and @.price<9)].title',
+            data,
+            ["Moby Dick"],
+        ),
+        TestCase(
+            '$.book[?(@.author=="Herman Melville" or @.author=="Evelyn Waugh")].author',
+            data,
+            ["Evelyn Waugh", "Herman Melville"],
+        ),
     ]
 )
 def cases(request):

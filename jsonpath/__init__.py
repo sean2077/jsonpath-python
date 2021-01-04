@@ -2,10 +2,10 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-01-04 15:25:08
+LastEditTime : 2021-01-04 15:36:19
 Description  : JSONPath
 """
-__version__ = "0.0.3"
+__version__ = "1.0.0"
 __author__ = "zhangxianbing"
 
 import json

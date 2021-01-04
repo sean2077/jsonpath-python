@@ -2,9 +2,12 @@ from jsonpath import JSONPath
 
 
 def test_value_cases(value_cases):
-    assert value_cases.result == JSONPath(value_cases.expr).parse(value_cases.data)
+    print(value_cases.expr)
+    r = JSONPath(value_cases.expr).parse(value_cases.data)
+    assert r == value_cases.result
 
 
 def test_path_cases(path_cases):
-    print(JSONPath(path_cases.expr).parse(path_cases.data, "PATH"))
-    # assert path_cases.result == JSONPath(path_cases.expr).parse(path_cases.data, "PATH")
+    print(path_cases.expr)
+    r = JSONPath(path_cases.expr).parse(path_cases.data, "PATH")
+    assert r == path_cases.result

@@ -2,53 +2,41 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2021-01-04 12:40:59
+LastEditTime : 2021-01-04 14:10:00
 Description  : JSONPath
 """
 __version__ = "0.0.3"
 __author__ = "zhangxianbing"
 
 import json
+import os
 import re
+import logging
 from collections import defaultdict
 from typing import Union
 
-RESULT_TYPE = {
-    "VALUE": "A list of specific values.",
-    "FIELD": "A dict with specific fields.",
-    "PATH": "All path of specific values.",
-}
+# pylint: disable=invalid-name,missing-function-docstring,missing-class-docstring,eval-used,logging-fstring-interpolation
 
 
-SEP = ";"
-# regex patterns
-REP_PICKUP_QUOTE = re.compile(r"['](.*?)[']")
-REP_PICKUP_BRACKET = re.compile(r"[\[](.*?)[\]]")
-REP_PUTBACK_QUOTE = re.compile(r"#Q(\d+)")
-REP_PUTBACK_BRACKET = re.compile(r"#B(\d+)")
-REP_DOUBLEDOT = re.compile(r"\.\.")
-REP_DOT = re.compile(r"(?<!\.)\.(?!\.)")
+def create_logger(name: str = None, level: Union[int, str] = logging.INFO):
+    """Get or create a logger used for local debug."""
 
-# operators
-REP_SLICE_CONTENT = re.compile(r"^(-?\d*)?:(-?\d*)?(:-?\d*)?$")
-REP_SELECT_CONTENT = re.compile(r"^([\w.]+)(,[\w.]+)+$")
-REP_FILTER_CONTENT = re.compile(
-    r"@\.(.*?)(?=<=|>=|==|!=|>|<| in| not| is)|len\(@\.(.*?)\)"
-)
+    formater = logging.Formatter(
+        f"%(asctime)s-%(levelname)s-[{name}] %(message)s", datefmt="[%Y-%m-%d %H:%M:%S]"
+    )
 
-# pylint: disable=invalid-name,missing-function-docstring,missing-class-docstring,eval-used
+    handler = logging.StreamHandler()
+    handler.setLevel(level)
+    handler.setFormatter(formater)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+
+    return logger
 
 
-def _getattr(obj: dict, path: str):
-    r = obj
-    for k in path.split("."):
-        try:
-            r = r.get(k)
-        except (AttributeError, KeyError) as err:
-            print(err)
-            return None
-
-    return r
+LOG = create_logger("jsonpath", os.getenv("PYLOGLEVEL", "INFO"))
 
 
 class ExprSyntaxError(Exception):
@@ -56,6 +44,28 @@ class ExprSyntaxError(Exception):
 
 
 class JSONPath:
+    RESULT_TYPE = {
+        "VALUE": "A list of specific values.",
+        "FIELD": "A dict with specific fields.",
+        "PATH": "All path of specific values.",
+    }
+
+    SEP = ";"
+    # regex patterns
+    REP_PICKUP_QUOTE = re.compile(r"['](.*?)[']")
+    REP_PICKUP_BRACKET = re.compile(r"[\[](.*?)[\]]")
+    REP_PUTBACK_QUOTE = re.compile(r"#Q(\d+)")
+    REP_PUTBACK_BRACKET = re.compile(r"#B(\d+)")
+    REP_DOUBLEDOT = re.compile(r"\.\.")
+    REP_DOT = re.compile(r"(?<!\.)\.(?!\.)")
+
+    # operators
+    REP_SLICE_CONTENT = re.compile(r"^(-?\d*)?:(-?\d*)?(:-?\d*)?$")
+    REP_SELECT_CONTENT = re.compile(r"^([\w.]+)(,[\w.]+)+$")
+    REP_FILTER_CONTENT = re.compile(
+        r"@\.(.*?)(?=<=|>=|==|!=|>|<| in| not| is)|len\(@\.(.*?)\)"
+    )
+
     # annotations
     steps: list
     lpath: int
@@ -65,25 +75,40 @@ class JSONPath:
 
     def __init__(self, expr: str):
         expr = self._parse_expr(expr)
-        self.steps = expr.split(SEP)
+        self.steps = expr.split(JSONPath.SEP)
         self.lpath = len(self.steps)
-        print(f"steps  : {self.steps}")
+        LOG.debug(f"steps  : {self.steps}")
+
+    def parse(self, obj, result_type="VALUE"):
+        if not isinstance(obj, (list, dict)):
+            raise TypeError("obj must be a list or a dict.")
+        if result_type not in JSONPath.RESULT_TYPE:
+            raise ValueError(
+                f"result_type must be one of {tuple(JSONPath.RESULT_TYPE.keys())}"
+            )
+        self.result_type = result_type
+        if self.result_type == "FIELD":
+            self.result = {}
+        else:
+            self.result = []
+
+        self._trace(obj, 0, "$")
+
+        return self.result
 
     def _parse_expr(self, expr):
-        if __debug__:
-            print(f"before expr : {expr}")
+        LOG.debug(f"before expr : {expr}")
 
-        expr = REP_PICKUP_QUOTE.sub(self._f_pickup_quote, expr)
-        expr = REP_PICKUP_BRACKET.sub(self._f_pickup_bracket, expr)
-        expr = REP_DOUBLEDOT.sub(f"{SEP}..{SEP}", expr)
-        expr = REP_DOT.sub(SEP, expr)
-        expr = REP_PUTBACK_BRACKET.sub(self._f_putback_bracket, expr)
-        expr = REP_PUTBACK_QUOTE.sub(self._f_putback_quote, expr)
+        expr = JSONPath.REP_PICKUP_QUOTE.sub(self._f_pickup_quote, expr)
+        expr = JSONPath.REP_PICKUP_BRACKET.sub(self._f_pickup_bracket, expr)
+        expr = JSONPath.REP_DOUBLEDOT.sub(f"{JSONPath.SEP}..{JSONPath.SEP}", expr)
+        expr = JSONPath.REP_DOT.sub(JSONPath.SEP, expr)
+        expr = JSONPath.REP_PUTBACK_BRACKET.sub(self._f_putback_bracket, expr)
+        expr = JSONPath.REP_PUTBACK_QUOTE.sub(self._f_putback_quote, expr)
         if expr.startswith("$;"):
             expr = expr[2:]
 
-        if __debug__:
-            print(f"after expr  : {expr}")
+        LOG.debug(f"after expr  : {expr}")
         return expr
 
     def _f_pickup_quote(self, m):
@@ -109,36 +134,43 @@ class JSONPath:
             ret += '["%s"]' % e
         return ret
 
-    def parse(self, obj, result_type="VALUE"):
-        if not isinstance(obj, (list, dict)):
-            raise TypeError("obj must be a list or a dict.")
-        if result_type not in RESULT_TYPE:
-            raise ValueError(f"result_type must be one of {tuple(RESULT_TYPE.keys())}")
-        self.result_type = result_type
-        if self.result_type == "FIELD":
-            self.result = {}
-        else:
-            self.result = []
-
-        self._trace(obj, 0, "$")
-
-        return self.result
-
     @staticmethod
     def _traverse(f, obj, i: int, path: str, *args):
         if isinstance(obj, list):
             for idx, v in enumerate(obj):
-                f(v, i, f"{path}{SEP}{idx}", *args)
+                f(v, i, f"{path}{JSONPath.SEP}{idx}", *args)
         elif isinstance(obj, dict):
             for k, v in obj.items():
-                f(v, i, f"{path}{SEP}{k}", *args)
+                f(v, i, f"{path}{JSONPath.SEP}{k}", *args)
+
+    @staticmethod
+    def _getattr(obj: dict, path: str):
+        r = obj
+        for k in path.split("."):
+            try:
+                r = r.get(k)
+            except (AttributeError, KeyError) as err:
+                LOG.error(err)
+                return None
+
+        return r
+
+    @staticmethod
+    def _sorter(obj, sortbys):
+        for sortby in sortbys.split(",")[::-1]:
+            if sortby.startswith("~"):
+                obj.sort(
+                    key=lambda t, k=sortby: JSONPath._getattr(t[1], k[1:]), reverse=True
+                )
+            else:
+                obj.sort(key=lambda t, k=sortby: JSONPath._getattr(t[1], k))
 
     def _filter(self, obj, i: int, path: str, step: str):
         r = False
         try:
             r = eval(step, None, {"__obj": obj})
         except Exception as err:
-            print(err)
+            LOG.error(err)
         if r:
             self._trace(obj, i, path)
 
@@ -158,7 +190,7 @@ class JSONPath:
                 self.result.append(path)
             elif self.result_type == "FIELD":
                 pass
-            print(obj)
+            LOG.debug(f"path: {path} | value: {obj}")
             return
 
         step = self.steps[i]
@@ -178,61 +210,55 @@ class JSONPath:
         if isinstance(obj, list) and step.isdigit():
             ikey = int(step)
             if ikey < len(obj):
-                self._trace(obj[ikey], i + 1, f"{path}{SEP}{step}")
+                self._trace(obj[ikey], i + 1, f"{path}{JSONPath.SEP}{step}")
             return
 
         # get value from dict
         if isinstance(obj, dict) and step in obj:
-            self._trace(obj[step], i + 1, f"{path}{SEP}{step}")
+            self._trace(obj[step], i + 1, f"{path}{JSONPath.SEP}{step}")
             return
 
         # slice
-        if isinstance(obj, list) and REP_SLICE_CONTENT.fullmatch(step):
+        if isinstance(obj, list) and JSONPath.REP_SLICE_CONTENT.fullmatch(step):
+            obj = [(idx, v) for idx, v in enumerate(obj)]
             vals = eval(f"obj[{step}]")
-            for idx, v in enumerate(vals):
-                self._trace(v, i + 1, f"{path}{SEP}{idx}")
+            for idx, v in vals:
+                self._trace(v, i + 1, f"{path}{JSONPath.SEP}{idx}")
             return
 
         # select
-        if isinstance(obj, dict) and REP_SELECT_CONTENT.fullmatch(step):
+        if isinstance(obj, dict) and JSONPath.REP_SELECT_CONTENT.fullmatch(step):
             for k in step.split(","):
                 if k in obj:
-                    self._trace(obj[k], i + 1, f"{path}{SEP}{k}")
+                    self._trace(obj[k], i + 1, f"{path}{JSONPath.SEP}{k}")
             return
 
         # filter
         if step.startswith("?(") and step.endswith(")"):
             step = step[2:-1]
-            step = REP_FILTER_CONTENT.sub(self._f_brackets, step)
+            step = JSONPath.REP_FILTER_CONTENT.sub(self._f_brackets, step)
             self._traverse(self._filter, obj, i + 1, path, step)
             return
 
         # sort
         if step.startswith("/(") and step.endswith(")"):
             if isinstance(obj, list):
-                for sortby in step[2:-1].split(",")[::-1]:
-                    if sortby.startswith("~"):
-                        obj.sort(
-                            key=lambda t, k=sortby: _getattr(t, k[1:]), reverse=True
-                        )
-                    else:
-                        obj.sort(key=lambda t, k=sortby: _getattr(t, k))
+                obj = [(idx, v) for idx, v in enumerate(obj)]
+                self._sorter(obj, step[2:-1])
+                for idx, v in obj:
+                    self._trace(v, i + 1, f"{path}{JSONPath.SEP}{idx}")
             elif isinstance(obj, dict):
                 obj = [(k, v) for k, v in obj.items()]
-                for sortby in step[2:-1].split(",")[::-1]:
-                    if sortby.startswith("~"):
-                        obj.sort(
-                            key=lambda t, k=sortby: _getattr(t[1], k[1:]), reverse=True
-                        )
-                    else:
-                        obj.sort(key=lambda t, k=sortby: _getattr(t[1], k))
-                obj = {k: v for k, v in obj}
-            self._traverse(self._trace, obj, i + 1, path)
+                self._sorter(obj, step[2:-1])
+                for k, v in obj:
+                    self._trace(v, i + 1, f"{path}{JSONPath.SEP}{k}")
+            else:
+                raise ExprSyntaxError("sort operate must acting on list or dict")
             return
 
 
 if __name__ == "__main__":
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
-    D = JSONPath("$.scores[/(score)].score").parse(d, "PATH")
+    D = JSONPath("$.book[/(price)].price").parse(d, "PATH")
     print(D)

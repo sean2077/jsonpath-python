@@ -2,10 +2,10 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-01-04 15:36:19
+LastEditTime : 2021-01-04 16:30:17
 Description  : JSONPath
 """
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "zhangxianbing"
 
 import json
@@ -260,6 +260,8 @@ class JSONPath:
                 self._trace(obj_, i + 1, path)
             else:
                 raise ExprSyntaxError("field-extractor must acting on list or dict")
+
+            return
 
 
 if __name__ == "__main__":

@@ -14,4 +14,10 @@ test:
 	pytest test -vv -s
 
 clean:
-	rm -rf $(PYCACHE_DIR) ${PYTEST_DIR}
+	rm -rf $(PYCACHE_DIR) ${PYTEST_DIR} dist jsonpath.egg-info
+
+package: clean
+	python3 setup.py sdist bdist_wheel
+
+upload: package
+	twine upload dist/*

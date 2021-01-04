@@ -12,7 +12,7 @@
 
 # jsonpath-python
 
-A more powerful JSONPath implementations in modern python.
+A more powerful JSONPath implementation in modern python.
 
 ## Features
 

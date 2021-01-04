@@ -2,7 +2,7 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2021-01-04 14:10:00
+LastEditTime : 2021-01-04 14:34:35
 Description  : JSONPath
 """
 __version__ = "0.0.3"
@@ -220,7 +220,7 @@ class JSONPath:
 
         # slice
         if isinstance(obj, list) and JSONPath.REP_SLICE_CONTENT.fullmatch(step):
-            obj = [(idx, v) for idx, v in enumerate(obj)]
+            obj = list(enumerate(obj))
             vals = eval(f"obj[{step}]")
             for idx, v in vals:
                 self._trace(v, i + 1, f"{path}{JSONPath.SEP}{idx}")
@@ -243,12 +243,12 @@ class JSONPath:
         # sort
         if step.startswith("/(") and step.endswith(")"):
             if isinstance(obj, list):
-                obj = [(idx, v) for idx, v in enumerate(obj)]
+                obj = list(enumerate(obj))
                 self._sorter(obj, step[2:-1])
                 for idx, v in obj:
                     self._trace(v, i + 1, f"{path}{JSONPath.SEP}{idx}")
             elif isinstance(obj, dict):
-                obj = [(k, v) for k, v in obj.items()]
+                obj = list(obj.items())
                 self._sorter(obj, step[2:-1])
                 for k, v in obj:
                     self._trace(v, i + 1, f"{path}{JSONPath.SEP}{k}")

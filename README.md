@@ -3,7 +3,6 @@
 
 - [jsonpath-python](#jsonpath-python)
   - [Features](#features)
-  - [Issues](#issues)
   - [Examples](#examples)
     - [Filter](#filter)
     - [Sort](#sort)

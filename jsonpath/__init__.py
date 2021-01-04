@@ -2,7 +2,7 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2021-01-04 11:01:24
+LastEditTime : 2021-01-04 12:40:59
 Description  : JSONPath
 """
 __version__ = "0.0.3"
@@ -10,8 +10,8 @@ __author__ = "zhangxianbing"
 
 import json
 import re
-from typing import Union
 from collections import defaultdict
+from typing import Union
 
 RESULT_TYPE = {
     "VALUE": "A list of specific values.",
@@ -39,10 +39,6 @@ REP_FILTER_CONTENT = re.compile(
 # pylint: disable=invalid-name,missing-function-docstring,missing-class-docstring,eval-used
 
 
-def concat(x, y, con=SEP):
-    return f"{x}{con}{y}"
-
-
 def _getattr(obj: dict, path: str):
     r = obj
     for k in path.split("."):
@@ -61,18 +57,13 @@ class ExprSyntaxError(Exception):
 
 class JSONPath:
     # annotations
-    result: Union[list, dict]
-    result_type: str
-    subx = defaultdict(list)
     steps: list
     lpath: int
+    subx = defaultdict(list)
+    result: Union[list, dict]
+    result_type: str
 
-    def __init__(self, expr: str, *, result_type="VALUE"):
-        if result_type not in RESULT_TYPE:
-            raise ValueError(f"result_type must be one of {tuple(RESULT_TYPE.keys())}")
-        self.result_type = result_type
-
-        # parse expression
+    def __init__(self, expr: str):
         expr = self._parse_expr(expr)
         self.steps = expr.split(SEP)
         self.lpath = len(self.steps)
@@ -118,38 +109,40 @@ class JSONPath:
             ret += '["%s"]' % e
         return ret
 
-    def parse(self, obj):
+    def parse(self, obj, result_type="VALUE"):
         if not isinstance(obj, (list, dict)):
             raise TypeError("obj must be a list or a dict.")
-
+        if result_type not in RESULT_TYPE:
+            raise ValueError(f"result_type must be one of {tuple(RESULT_TYPE.keys())}")
+        self.result_type = result_type
         if self.result_type == "FIELD":
             self.result = {}
         else:
             self.result = []
 
-        self._trace(obj, 0)
+        self._trace(obj, 0, "$")
 
         return self.result
 
     @staticmethod
-    def _traverse(f, obj, i: int, *args):
+    def _traverse(f, obj, i: int, path: str, *args):
         if isinstance(obj, list):
-            for v in obj:
-                f(v, i, *args)
+            for idx, v in enumerate(obj):
+                f(v, i, f"{path}{SEP}{idx}", *args)
         elif isinstance(obj, dict):
-            for v in obj.values():
-                f(v, i, *args)
+            for k, v in obj.items():
+                f(v, i, f"{path}{SEP}{k}", *args)
 
-    def _filter(self, obj, i: int, step: str):
+    def _filter(self, obj, i: int, path: str, step: str):
         r = False
         try:
             r = eval(step, None, {"__obj": obj})
         except Exception as err:
             print(err)
         if r:
-            self._trace(obj, i)
+            self._trace(obj, i, path)
 
-    def _trace(self, obj, i: int):
+    def _trace(self, obj, i: int, path):
         """Perform operation on object.
 
         Args:
@@ -159,7 +152,12 @@ class JSONPath:
 
         # store
         if i >= self.lpath:
-            self.result.append(obj)
+            if self.result_type == "VALUE":
+                self.result.append(obj)
+            elif self.result_type == "PATH":
+                self.result.append(path)
+            elif self.result_type == "FIELD":
+                pass
             print(obj)
             return
 
@@ -167,46 +165,46 @@ class JSONPath:
 
         # wildcard
         if step == "*":
-            self._traverse(self._trace, obj, i + 1)
+            self._traverse(self._trace, obj, i + 1, path)
             return
 
         # recursive descent
         if step == "..":
-            self._trace(obj, i + 1)
-            self._traverse(self._trace, obj, i)
+            self._trace(obj, i + 1, path)
+            self._traverse(self._trace, obj, i, path)
             return
 
         # get value from list
         if isinstance(obj, list) and step.isdigit():
             ikey = int(step)
             if ikey < len(obj):
-                self._trace(obj[ikey], i + 1)
+                self._trace(obj[ikey], i + 1, f"{path}{SEP}{step}")
             return
 
         # get value from dict
         if isinstance(obj, dict) and step in obj:
-            self._trace(obj[step], i + 1)
+            self._trace(obj[step], i + 1, f"{path}{SEP}{step}")
             return
 
         # slice
         if isinstance(obj, list) and REP_SLICE_CONTENT.fullmatch(step):
             vals = eval(f"obj[{step}]")
-            for v in vals:
-                self._trace(v, i + 1)
+            for idx, v in enumerate(vals):
+                self._trace(v, i + 1, f"{path}{SEP}{idx}")
             return
 
         # select
         if isinstance(obj, dict) and REP_SELECT_CONTENT.fullmatch(step):
             for k in step.split(","):
                 if k in obj:
-                    self._trace(obj[k], i + 1)
+                    self._trace(obj[k], i + 1, f"{path}{SEP}{k}")
             return
 
         # filter
         if step.startswith("?(") and step.endswith(")"):
             step = step[2:-1]
             step = REP_FILTER_CONTENT.sub(self._f_brackets, step)
-            self._traverse(self._filter, obj, i + 1, step)
+            self._traverse(self._filter, obj, i + 1, path, step)
             return
 
         # sort
@@ -229,11 +227,12 @@ class JSONPath:
                     else:
                         obj.sort(key=lambda t, k=sortby: _getattr(t[1], k))
                 obj = {k: v for k, v in obj}
-            self._traverse(self._trace, obj, i + 1)
+            self._traverse(self._trace, obj, i + 1, path)
             return
 
 
 if __name__ == "__main__":
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
-    JSONPath("$.scores[/(score)].score").parse(d)
+    D = JSONPath("$.scores[/(score)].score").parse(d, "PATH")
+    print(D)

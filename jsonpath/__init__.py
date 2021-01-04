@@ -2,7 +2,7 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2020-12-31 18:14:16
+LastEditTime : 2021-01-04 09:59:44
 Description  : JSONPath
 """
 __version__ = "1.0.0"
@@ -153,64 +153,64 @@ class JSONPath:
         if r:
             self._trace(obj, istep)
 
-    def _trace(self, obj, istep: int):
+    def _trace(self, obj, i: int):
         """Perform operation on object.
 
         Args:
             obj ([type]): current operating object
-            istep (int): current operation specified by index in self.steps
+            i (int): current operation specified by index in self.steps
         """
 
         # store
-        if istep >= self.lpath:
+        if i >= self.lpath:
             self.result.append(obj)
             print(obj)
             return
 
-        step = self.steps[istep]
+        step = self.steps[i]
 
         # wildcard
         if step == "*":
-            self._traverse(self._trace, obj, istep + 1)
+            self._traverse(self._trace, obj, i + 1)
             return
 
         # recursive descent
         if step == "..":
-            self._trace(obj, istep + 1)
-            self._traverse(self._trace, obj, istep)
+            self._trace(obj, i + 1)
+            self._traverse(self._trace, obj, i)
             return
 
         # get value from list
         if isinstance(obj, list) and step.isdigit():
             ikey = int(step)
             if ikey < len(obj):
-                self._trace(obj[ikey], istep + 1)
+                self._trace(obj[ikey], i + 1)
             return
 
         # get value from dict
         if isinstance(obj, dict) and step in obj:
-            self._trace(obj[step], istep + 1)
+            self._trace(obj[step], i + 1)
             return
 
         # slice
         if isinstance(obj, list) and REP_SLICE_CONTENT.fullmatch(step):
             vals = eval(f"obj[{step}]")
             for v in vals:
-                self._trace(v, istep + 1)
+                self._trace(v, i + 1)
             return
 
         # select
         if isinstance(obj, dict) and REP_SELECT_CONTENT.fullmatch(step):
             for k in step.split(","):
                 if k in obj:
-                    self._trace(obj[k], istep + 1)
+                    self._trace(obj[k], i + 1)
             return
 
         # filter
         if step.startswith("?(") and step.endswith(")"):
             step = step[2:-1]
             step = REP_FILTER_CONTENT.sub(self._f_brackets, step)
-            self._traverse(self._filter, obj, istep + 1, step)
+            self._traverse(self._filter, obj, i + 1, step)
             return
 
         # sort
@@ -225,16 +225,11 @@ class JSONPath:
                     else:
                         obj.sort(key=lambda t, k=sortby: _getattr(t, k))
 
-            self._traverse(self._trace, obj, istep + 1)
+            self._traverse(self._trace, obj, i + 1)
             return
 
 
 if __name__ == "__main__":
-    # JSONPath("$.a.'b.c'.'d e'.[f,g][h][*][j.k][l m][2:4]..d", result_type="FIELD")
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
-    # JSONPath(
-    #     '$.book[?(@.title=="Herman Melville" or @.title=="Evelyn Waugh")].title'
-    # ).parse(d)
-    # JSONPath("$..price").parse(d)
     JSONPath("$.book[/(price)].price").parse(d)

@@ -2,7 +2,7 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2021-01-04 10:27:22
+LastEditTime : 2021-01-04 10:50:28
 Description  : JSONPath
 """
 __version__ = "0.0.2"
@@ -212,15 +212,23 @@ class JSONPath:
         # sort
         if step.startswith("/(") and step.endswith(")"):
             if isinstance(obj, list):
-                step = step[2:-1]
-                for sortby in step.split(",")[::-1]:
+                for sortby in step[2:-1].split(",")[::-1]:
                     if sortby.startswith("~"):
                         obj.sort(
                             key=lambda t, k=sortby: _getattr(t, k[1:]), reverse=True
                         )
                     else:
                         obj.sort(key=lambda t, k=sortby: _getattr(t, k))
-
+            elif isinstance(obj, dict):
+                obj = [(k, v) for k, v in obj.items()]
+                for sortby in step[2:-1].split(",")[::-1]:
+                    if sortby.startswith("~"):
+                        obj.sort(
+                            key=lambda t, k=sortby: _getattr(t[1], k[1:]), reverse=True
+                        )
+                    else:
+                        obj.sort(key=lambda t, k=sortby: _getattr(t[1], k))
+                obj = {k: v for k, v in obj}
             self._traverse(self._trace, obj, i + 1)
             return
 
@@ -228,4 +236,4 @@ class JSONPath:
 if __name__ == "__main__":
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
-    JSONPath("$.book[/(price)].price").parse(d)
+    JSONPath("$.scores[/(score)].score").parse(d)

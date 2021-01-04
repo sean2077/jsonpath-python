@@ -1,44 +1,12 @@
-import pytest
+import json
 from collections import namedtuple
+
+import pytest
 
 TestCase = namedtuple("TestCase", ("expr", "data", "result"))
 
-data = {
-    "a.b c": "a.b c",
-    "book": [
-        {
-            "category": "reference",
-            "author": "Nigel Rees",
-            "title": "Sayings of the Century",
-            "price": 8.95,
-            "brand": {"version": "v1.0.0"},
-        },
-        {
-            "category": "fiction",
-            "author": "Evelyn Waugh",
-            "title": "Sword of Honour",
-            "price": 12.99,
-            "brand": {"version": "v0.0.1"},
-        },
-        {
-            "category": "fiction",
-            "author": "Herman Melville",
-            "title": "Moby Dick",
-            "isbn": "0-553-21311-3",
-            "price": 8.99,
-            "brand": {"version": "v1.0.2"},
-        },
-        {
-            "category": "fiction",
-            "author": "J. R. R. Tolkien",
-            "title": "The Lord of the Rings",
-            "isbn": "0-395-19395-8",
-            "price": 22.99,
-            "brand": {"version": "v1.0.3"},
-        },
-    ],
-    "bicycle": {"color": "red", "price": 19.95},
-}
+with open("test/data/2.json", "rb") as f:
+    data = json.load(f)
 
 
 @pytest.fixture(
@@ -75,6 +43,7 @@ data = {
             data,
             ["v0.0.1", "v1.0.0", "v1.0.2", "v1.0.3"],
         ),
+        TestCase("$.scores[/(score)].score", data, [60, 85, 90, 95, 100]),
     ]
 )
 def cases(request):

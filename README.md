@@ -5,8 +5,8 @@
   - [Features](#features)
   - [Examples](#examples)
     - [Filter](#filter)
-    - [Sort](#sort)
-    - [Output mode: FIELD (In progress)](#output-mode-field-in-progress)
+    - [Sorter](#sorter)
+    - [Field-Extractor](#field-extractor)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -17,12 +17,12 @@ A more powerful JSONPath implementations in modern python.
 ## Features
 
 - [x] Light. (No need to install third-party dependencies.)
-- [x] Powerful filtering function, including multi-selection, inverse-selection filtering.
-- [x] Powerful sorting function, including sorting by multiple fields, ascending and descending order.
-- [x] Support output mode: VALUE
-- [ ] Support output mode: PATH
-- [ ] Support output mode: FIELD
-- [ ] Support parent operator
+- [x] Support basic semantics of JSONPath.
+- [x] Support output modes: VALUE, PATH.
+- [x] Support filter operator, including multi-selection, inverse-selection filtering.
+- [x] Support sorter operator, including sorting by multiple fields, ascending and descending order.
+- [ ] Support parent operator.
+- [ ] Support user-defined function.
 
 ## Examples
 
@@ -122,33 +122,29 @@ data = {
 ]
 ```
 
-### Field-Extractor (In progress)
+### Field-Extractor
 
 ```python
->>> JSONPath("$.store.book[*][title,price]",result_type="FIELD").parse(data)
+>>> JSONPath("$.store.book[*](title,price)",result_type="FIELD").parse(data)
 ```
 
 ```json
-{
-  "store": {
-    "book": [
-      {
-        "title": "Sayings of the Century",
-        "price": 8.95
-      },
-      {
-        "title": "Sword of Honour",
-        "price": 12.99
-      },
-      {
-        "title": "Moby Dick",
-        "price": 8.99
-      },
-      {
-        "title": "The Lord of the Rings",
-        "price": 22.99
-      }
-    ]
+[
+  {
+    "title": "Sayings of the Century",
+    "price": 8.95
+  },
+  {
+    "title": "Sword of Honour",
+    "price": 12.99
+  },
+  {
+    "title": "Moby Dick",
+    "price": 8.99
+  },
+  {
+    "title": "The Lord of the Rings",
+    "price": 22.99
   }
-}
+]
 ```

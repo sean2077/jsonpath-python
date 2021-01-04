@@ -48,6 +48,37 @@ with open("test/data/2.json", "rb") as f:
             ["v0.0.1", "v1.0.0", "v1.0.2", "v1.0.3"],
         ),
         TestCase("$.scores[/(score)].score", data, [60, 85, 90, 95, 100]),
+        TestCase(
+            "$.scores[/(score)].(score)",
+            data,
+            [
+                {"score": 60},
+                {"score": 85},
+                {"score": 90},
+                {"score": 95},
+                {"score": 100},
+            ],
+        ),
+        TestCase(
+            "$.book[*].(title)",
+            data,
+            [
+                {"title": "Sayings of the Century"},
+                {"title": "Sword of Honour"},
+                {"title": "Moby Dick"},
+                {"title": "The Lord of the Rings"},
+            ],
+        ),
+        TestCase(
+            "$.book[/(category,price)].(title,price)",
+            data,
+            [
+                {"title": "Moby Dick", "price": 8.99},
+                {"title": "Sword of Honour", "price": 12.99},
+                {"title": "The Lord of the Rings", "price": 22.99},
+                {"title": "Sayings of the Century", "price": 8.95},
+            ],
+        ),
     ]
 )
 def value_cases(request):

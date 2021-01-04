@@ -1,17 +1,17 @@
 """
-Author       : zhangxianbing1
+Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
-LastEditors  : zhangxianbing1
-LastEditTime : 2021-01-04 14:34:35
+LastEditors  : zhangxianbing
+LastEditTime : 2021-01-04 15:25:08
 Description  : JSONPath
 """
 __version__ = "0.0.3"
 __author__ = "zhangxianbing"
 
 import json
+import logging
 import os
 import re
-import logging
 from collections import defaultdict
 from typing import Union
 
@@ -46,7 +46,6 @@ class ExprSyntaxError(Exception):
 class JSONPath:
     RESULT_TYPE = {
         "VALUE": "A list of specific values.",
-        "FIELD": "A dict with specific fields.",
         "PATH": "All path of specific values.",
     }
 
@@ -70,7 +69,7 @@ class JSONPath:
     steps: list
     lpath: int
     subx = defaultdict(list)
-    result: Union[list, dict]
+    result: list
     result_type: str
 
     def __init__(self, expr: str):
@@ -82,16 +81,14 @@ class JSONPath:
     def parse(self, obj, result_type="VALUE"):
         if not isinstance(obj, (list, dict)):
             raise TypeError("obj must be a list or a dict.")
+
         if result_type not in JSONPath.RESULT_TYPE:
             raise ValueError(
                 f"result_type must be one of {tuple(JSONPath.RESULT_TYPE.keys())}"
             )
         self.result_type = result_type
-        if self.result_type == "FIELD":
-            self.result = {}
-        else:
-            self.result = []
 
+        self.result = []
         self._trace(obj, 0, "$")
 
         return self.result
@@ -188,8 +185,6 @@ class JSONPath:
                 self.result.append(obj)
             elif self.result_type == "PATH":
                 self.result.append(path)
-            elif self.result_type == "FIELD":
-                pass
             LOG.debug(f"path: {path} | value: {obj}")
             return
 
@@ -240,7 +235,7 @@ class JSONPath:
             self._traverse(self._filter, obj, i + 1, path, step)
             return
 
-        # sort
+        # sorter
         if step.startswith("/(") and step.endswith(")"):
             if isinstance(obj, list):
                 obj = list(enumerate(obj))
@@ -253,12 +248,24 @@ class JSONPath:
                 for k, v in obj:
                     self._trace(v, i + 1, f"{path}{JSONPath.SEP}{k}")
             else:
-                raise ExprSyntaxError("sort operate must acting on list or dict")
+                raise ExprSyntaxError("sorter must acting on list or dict")
             return
+
+        # field-extractor
+        if step.startswith("(") and step.endswith(")"):
+            if isinstance(obj, dict):
+                obj_ = {}
+                for k in step[1:-1].split(","):
+                    obj_[k] = obj.get(k)
+                self._trace(obj_, i + 1, path)
+            else:
+                raise ExprSyntaxError("field-extractor must acting on list or dict")
 
 
 if __name__ == "__main__":
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
-    D = JSONPath("$.book[/(price)].price").parse(d, "PATH")
+    D = JSONPath("$.book[*].(title)").parse(d, "VALUE")
     print(D)
+    for v in D:
+        print(v)

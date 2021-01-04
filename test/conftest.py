@@ -16,13 +16,16 @@ with open("test/data/2.json", "rb") as f:
         TestCase("$[book]", data, [data["book"]]),
         TestCase("$.'a.b c'", data, [data["a.b c"]]),
         TestCase("$['a.b c']", data, [data["a.b c"]]),
+        # recursive descent
         TestCase("$..price", data, [8.95, 12.99, 8.99, 22.99, 19.95]),
+        # slice
         TestCase("$.book[1:3]", data, data["book"][1:3]),
         TestCase("$.book[1:-1]", data, data["book"][1:-1]),
         TestCase("$.book[0:-1:2]", data, data["book"][0:-1:2]),
         TestCase("$.book[-1:1]", data, data["book"][-1:1]),
         TestCase("$.book[-1:-11:3]", data, data["book"][-1:-11:3]),
         TestCase("$.book[:]", data, data["book"][:]),
+        # filter
         TestCase("$.book[?(@.price>8 and @.price<9)].price", data, [8.95, 8.99]),
         TestCase('$.book[?(@.category=="reference")].category', data, ["reference"]),
         TestCase(
@@ -35,6 +38,7 @@ with open("test/data/2.json", "rb") as f:
             data,
             ["Evelyn Waugh", "Herman Melville"],
         ),
+        # sort
         TestCase("$.book[/(price)].price", data, [8.95, 8.99, 12.99, 22.99]),
         TestCase("$.book[/(~price)].price", data, [22.99, 12.99, 8.99, 8.95]),
         TestCase("$.book[/(category,price)].price", data, [8.99, 12.99, 22.99, 8.95]),

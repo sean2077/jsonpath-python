@@ -2,10 +2,10 @@
 Author       : zhangxianbing1
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing1
-LastEditTime : 2021-01-04 09:59:44
+LastEditTime : 2021-01-04 10:27:22
 Description  : JSONPath
 """
-__version__ = "1.0.0"
+__version__ = "0.0.2"
 __author__ = "zhangxianbing"
 
 import json
@@ -112,10 +112,6 @@ class JSONPath:
         return self.subx["#B"][int(m.group(1))]
 
     @staticmethod
-    def _f_notvar(m):
-        return f"{m.group(1)} not in __obj"
-
-    @staticmethod
     def _f_brackets(m):
         ret = "__obj"
         for e in m.group(1).split("."):
@@ -136,22 +132,22 @@ class JSONPath:
         return self.result
 
     @staticmethod
-    def _traverse(f, obj, istep: int, *args):
+    def _traverse(f, obj, i: int, *args):
         if isinstance(obj, list):
             for v in obj:
-                f(v, istep, *args)
+                f(v, i, *args)
         elif isinstance(obj, dict):
             for v in obj.values():
-                f(v, istep, *args)
+                f(v, i, *args)
 
-    def _filter(self, obj, istep: int, step):
+    def _filter(self, obj, i: int, step: str):
         r = False
         try:
             r = eval(step, None, {"__obj": obj})
         except Exception as err:
             print(err)
         if r:
-            self._trace(obj, istep)
+            self._trace(obj, i)
 
     def _trace(self, obj, i: int):
         """Perform operation on object.

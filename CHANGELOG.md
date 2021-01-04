@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/compare/v0.0.3...v1.0.0) (2021-01-04)
+
+
+### Features
+
+* bump version 1.0.0 ([292daff](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/commit/292daff3bfcbde3715d460dcdb9fe6f53921a4b8))
+* support operator: field-extractor ([4645c33](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/commit/4645c33a54dda9705c3422c4f18bbfc7d0c9c986))
+
+
+### Bug Fixes
+
+* fix unnecessary-comprehension ([77ad2db](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/commit/77ad2dbcabd11ac66708b5b9aea226700170fe7f))
+
 ### [0.0.3](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/compare/v0.0.2...v0.0.3) (2021-01-04)
 
 

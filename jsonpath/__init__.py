@@ -2,7 +2,7 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-01-04 16:30:17
+LastEditTime : 2021-01-06 10:22:43
 Description  : JSONPath
 """
 __version__ = "1.0.1"
@@ -66,7 +66,7 @@ class JSONPath:
     )
 
     # annotations
-    steps: list
+    segments: list
     lpath: int
     subx = defaultdict(list)
     result: list
@@ -74,9 +74,9 @@ class JSONPath:
 
     def __init__(self, expr: str):
         expr = self._parse_expr(expr)
-        self.steps = expr.split(JSONPath.SEP)
-        self.lpath = len(self.steps)
-        LOG.debug(f"steps  : {self.steps}")
+        self.segments = expr.split(JSONPath.SEP)
+        self.lpath = len(self.segments)
+        LOG.debug(f"segments  : {self.segments}")
 
     def parse(self, obj, result_type="VALUE"):
         if not isinstance(obj, (list, dict)):
@@ -176,7 +176,7 @@ class JSONPath:
 
         Args:
             obj ([type]): current operating object
-            i (int): current operation specified by index in self.steps
+            i (int): current operation specified by index in self.segments
         """
 
         # store
@@ -188,7 +188,7 @@ class JSONPath:
             LOG.debug(f"path: {path} | value: {obj}")
             return
 
-        step = self.steps[i]
+        step = self.segments[i]
 
         # wildcard
         if step == "*":

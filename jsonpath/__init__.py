@@ -2,7 +2,7 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-01-06 10:22:43
+LastEditTime : 2021-01-13 13:29:48
 Description  : JSONPath
 """
 __version__ = "1.0.1"
@@ -60,7 +60,7 @@ class JSONPath:
 
     # operators
     REP_SLICE_CONTENT = re.compile(r"^(-?\d*)?:(-?\d*)?(:-?\d*)?$")
-    REP_SELECT_CONTENT = re.compile(r"^([\w.]+)(,[\w.]+)+$")
+    REP_SELECT_CONTENT = re.compile(r"^([\w.']+)(, ?[\w.']+)+$")
     REP_FILTER_CONTENT = re.compile(
         r"@\.(.*?)(?=<=|>=|==|!=|>|<| in| not| is)|len\(@\.(.*?)\)"
     )
@@ -267,7 +267,7 @@ class JSONPath:
 if __name__ == "__main__":
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
-    D = JSONPath("$.book[*].(title)").parse(d, "VALUE")
+    D = JSONPath("$[bicycle, scores]").parse(d, "VALUE")
     print(D)
     for v in D:
         print(v)

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.2](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/compare/v1.0.1...v1.0.2) (2021-01-13)
+
+
+### Features
+
+* bump version v1.0.2 ([36f7bfa](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/commit/36f7bfa51c2bb6ac0991a3f85fac8a4c4e67972e))
+* complete jsonpath syntax ([cca9583](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/commit/cca9583f7910f3abf183f6056103f9dc24d75f0d)), closes [#1](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/issues/1)
+* improve regex pattern of select content ([264c2ea](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/commit/264c2ea35cdbdc5806093b27a2b409ca609ecde1))
+
 ### 1.0.1 (2021-01-04)
 
 

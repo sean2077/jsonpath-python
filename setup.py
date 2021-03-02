@@ -12,7 +12,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/zhangxianbing/jsonpath-python",
-    packages=find_packages("jsonpath*"),
+    packages=find_packages(include=["jsonpath*"]),
     classifiers=[
         "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: MIT License",

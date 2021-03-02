@@ -2,7 +2,7 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-02-07 10:10:55
+LastEditTime : 2021-03-02 15:18:06
 Description  : JSONPath
 """
 __version__ = "1.0.3"
@@ -36,7 +36,7 @@ def create_logger(name: str = None, level: Union[int, str] = logging.INFO):
     return logger
 
 
-LOG = create_logger("jsonpath", os.getenv("PYLOGLEVEL", "INFO"))
+logger = create_logger("jsonpath", os.getenv("PYLOGLEVEL", "INFO"))
 
 
 class ExprSyntaxError(Exception):
@@ -49,14 +49,18 @@ class JSONPath:
         "PATH": "All path of specific values.",
     }
 
+    # common patterns
     SEP = ";"
-    # regex patterns
-    REP_PICKUP_QUOTE = re.compile(r"['](.*?)[']")
-    REP_PICKUP_BRACKET = re.compile(r"[\[](.*?)[\]]")
-    REP_PUTBACK_QUOTE = re.compile(r"#Q(\d+)")
-    REP_PUTBACK_BRACKET = re.compile(r"#B(\d+)")
     REP_DOUBLEDOT = re.compile(r"\.\.")
     REP_DOT = re.compile(r"(?<!\.)\.(?!\.)")
+
+    # save special patterns
+    REP_GET_QUOTE = re.compile(r"['](.*?)[']")
+    REP_PUT_QUOTE = re.compile(r"#Q(\d+)")
+    REP_GET_BRACKET = re.compile(r"[\[](.*?)[\]]")
+    REP_PUT_BRACKET = re.compile(r"#B(\d+)")
+    REP_GET_PAREN = re.compile(r"[\(](.*?)[\)]")
+    REP_PUT_PAREN = re.compile(r"#P(\d+)")
 
     # operators
     REP_SLICE_CONTENT = re.compile(r"^(-?\d*)?:(-?\d*)?(:-?\d*)?$")
@@ -76,7 +80,7 @@ class JSONPath:
         expr = self._parse_expr(expr)
         self.segments = expr.split(JSONPath.SEP)
         self.lpath = len(self.segments)
-        LOG.debug(f"segments  : {self.segments}")
+        logger.debug(f"segments  : {self.segments}")
 
     def parse(self, obj, result_type="VALUE"):
         if not isinstance(obj, (list, dict)):
@@ -94,35 +98,45 @@ class JSONPath:
         return self.result
 
     def _parse_expr(self, expr):
-        LOG.debug(f"before expr : {expr}")
+        logger.debug(f"before expr : {expr}")
 
-        expr = JSONPath.REP_PICKUP_QUOTE.sub(self._f_pickup_quote, expr)
-        expr = JSONPath.REP_PICKUP_BRACKET.sub(self._f_pickup_bracket, expr)
+        expr = JSONPath.REP_GET_QUOTE.sub(self._get_quote, expr)
+        expr = JSONPath.REP_GET_BRACKET.sub(self._get_bracket, expr)
+        expr = JSONPath.REP_GET_PAREN.sub(self._get_paren, expr)
         expr = JSONPath.REP_DOUBLEDOT.sub(f"{JSONPath.SEP}..{JSONPath.SEP}", expr)
         expr = JSONPath.REP_DOT.sub(JSONPath.SEP, expr)
-        expr = JSONPath.REP_PUTBACK_BRACKET.sub(self._f_putback_bracket, expr)
-        expr = JSONPath.REP_PUTBACK_QUOTE.sub(self._f_putback_quote, expr)
+        expr = JSONPath.REP_PUT_PAREN.sub(self._put_paren, expr)
+        expr = JSONPath.REP_PUT_BRACKET.sub(self._put_bracket, expr)
+        expr = JSONPath.REP_PUT_QUOTE.sub(self._put_quote, expr)
         if expr.startswith("$;"):
             expr = expr[2:]
 
-        LOG.debug(f"after expr  : {expr}")
+        logger.debug(f"after expr  : {expr}")
         return expr
 
-    def _f_pickup_quote(self, m):
+    def _get_quote(self, m):
         n = len(self.subx["#Q"])
         self.subx["#Q"].append(m.group(1))
         return f"#Q{n}"
 
-    def _f_pickup_bracket(self, m):
+    def _put_quote(self, m):
+        return self.subx["#Q"][int(m.group(1))]
+
+    def _get_bracket(self, m):
         n = len(self.subx["#B"])
         self.subx["#B"].append(m.group(1))
         return f".#B{n}"
 
-    def _f_putback_quote(self, m):
-        return self.subx["#Q"][int(m.group(1))]
-
-    def _f_putback_bracket(self, m):
+    def _put_bracket(self, m):
         return self.subx["#B"][int(m.group(1))]
+
+    def _get_paren(self, m):
+        n = len(self.subx["#P"])
+        self.subx["#P"].append(m.group(1))
+        return f"(#P{n})"
+
+    def _put_paren(self, m):
+        return self.subx["#P"][int(m.group(1))]
 
     @staticmethod
     def _f_brackets(m):
@@ -147,7 +161,7 @@ class JSONPath:
             try:
                 r = r.get(k)
             except (AttributeError, KeyError) as err:
-                LOG.error(err)
+                logger.error(err)
                 return None
 
         return r
@@ -167,7 +181,7 @@ class JSONPath:
         try:
             r = eval(step, None, {"__obj": obj})
         except Exception as err:
-            LOG.error(err)
+            logger.error(err)
         if r:
             self._trace(obj, i, path)
 
@@ -185,7 +199,7 @@ class JSONPath:
                 self.result.append(obj)
             elif self.result_type == "PATH":
                 self.result.append(path)
-            LOG.debug(f"path: {path} | value: {obj}")
+            logger.debug(f"path: {path} | value: {obj}")
             return
 
         step = self.segments[i]
@@ -256,10 +270,10 @@ class JSONPath:
             if isinstance(obj, dict):
                 obj_ = {}
                 for k in step[1:-1].split(","):
-                    obj_[k] = obj.get(k)
+                    obj_[k] = self._getattr(obj, k)
                 self._trace(obj_, i + 1, path)
             else:
-                raise ExprSyntaxError("field-extractor must acting on list or dict")
+                raise ExprSyntaxError("field-extractor must acting on dict")
 
             return
 
@@ -267,7 +281,7 @@ class JSONPath:
 if __name__ == "__main__":
     with open("test/data/2.json", "rb") as f:
         d = json.load(f)
-    D = JSONPath("$[bicycle, scores]").parse(d, "VALUE")
+    D = JSONPath("$.scores[/(score)].(score)").parse(d, "VALUE")
     print(D)
     for v in D:
         print(v)

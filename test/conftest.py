@@ -79,6 +79,16 @@ with open("test/data/2.json", "rb") as f:
                 {"title": "Sayings of the Century", "price": 8.95},
             ],
         ),
+        TestCase(
+            "$.book[*].(title,brand.version)",
+            data,
+            [
+                {"title": "Sayings of the Century", "brand.version": "v1.0.0"},
+                {"title": "Sword of Honour", "brand.version": "v0.0.1"},
+                {"title": "Moby Dick", "brand.version": "v1.0.2"},
+                {"title": "The Lord of the Rings", "brand.version": "v1.0.3"},
+            ],
+        ),
     ]
 )
 def value_cases(request):

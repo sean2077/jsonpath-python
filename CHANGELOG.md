@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.3](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/compare/v1.0.2...v1.0.3) (2021-03-02)
+
+
+### Features
+
+* bump version v1.0.3 ([122fa54](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/commit/122fa54fa0051bafeb8f1e64cd1a9fc1b91b3610))
+* support child operator in field-selector ([f5ec645](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/commit/f5ec645673df67baee248431860ada082fe95006))
+
 ### [1.0.2](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/compare/v1.0.1...v1.0.2) (2021-01-13)
 
 

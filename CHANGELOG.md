@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.4](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/compare/v1.0.3...v1.0.4) (2021-03-02)
+
+
+### Features
+
+* bump version 1.0.4 ([5ea02a6](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/commit/5ea02a67bec39ca50ffe141578fdbc5821fa8213))
+
+
+### Bug Fixes
+
+* fix setup.py ([5ba778b](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/commit/5ba778bf877211b9834dd71fc2cb1ae3daa52876))
+
 ### [1.0.3](https://gitlab.sz.sensetime.com/its-engineering/toolkit/jsonpath-python/compare/v1.0.2...v1.0.3) (2021-03-02)
 
 

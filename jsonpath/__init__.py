@@ -2,7 +2,7 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-03-02 15:56:00
+LastEditTime : 2021-03-02 19:08:30
 Description  : JSONPath
 """
 __version__ = "1.0.4"
@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import re
+import sys
 from collections import defaultdict
 from typing import Union
 
@@ -57,6 +58,8 @@ class JSONPath:
     # save special patterns
     REP_GET_QUOTE = re.compile(r"['](.*?)[']")
     REP_PUT_QUOTE = re.compile(r"#Q(\d+)")
+    REP_GET_BACKQUOTE = re.compile(r"[`](.*?)[`]")
+    REP_PUT_BACKQUOTE = re.compile(r"#BQ(\d+)")
     REP_GET_BRACKET = re.compile(r"[\[](.*?)[\]]")
     REP_PUT_BRACKET = re.compile(r"#B(\d+)")
     REP_GET_PAREN = re.compile(r"[\(](.*?)[\)]")
@@ -82,6 +85,8 @@ class JSONPath:
         self.lpath = len(self.segments)
         logger.debug(f"segments  : {self.segments}")
 
+        self.caller_globals = sys._getframe(1).f_globals
+
     def parse(self, obj, result_type="VALUE"):
         if not isinstance(obj, (list, dict)):
             raise TypeError("obj must be a list or a dict.")
@@ -99,14 +104,18 @@ class JSONPath:
 
     def _parse_expr(self, expr):
         logger.debug(f"before expr : {expr}")
-
+        # pick up special patterns
         expr = JSONPath.REP_GET_QUOTE.sub(self._get_quote, expr)
+        expr = JSONPath.REP_GET_BACKQUOTE.sub(self._get_backquote, expr)
         expr = JSONPath.REP_GET_BRACKET.sub(self._get_bracket, expr)
         expr = JSONPath.REP_GET_PAREN.sub(self._get_paren, expr)
+        # split
         expr = JSONPath.REP_DOUBLEDOT.sub(f"{JSONPath.SEP}..{JSONPath.SEP}", expr)
         expr = JSONPath.REP_DOT.sub(JSONPath.SEP, expr)
+        # put back
         expr = JSONPath.REP_PUT_PAREN.sub(self._put_paren, expr)
         expr = JSONPath.REP_PUT_BRACKET.sub(self._put_bracket, expr)
+        expr = JSONPath.REP_PUT_BACKQUOTE.sub(self._put_backquote, expr)
         expr = JSONPath.REP_PUT_QUOTE.sub(self._put_quote, expr)
         if expr.startswith("$;"):
             expr = expr[2:]
@@ -114,6 +123,7 @@ class JSONPath:
         logger.debug(f"after expr  : {expr}")
         return expr
 
+    # TODO abstract get and put procedures
     def _get_quote(self, m):
         n = len(self.subx["#Q"])
         self.subx["#Q"].append(m.group(1))
@@ -121,6 +131,14 @@ class JSONPath:
 
     def _put_quote(self, m):
         return self.subx["#Q"][int(m.group(1))]
+
+    def _get_backquote(self, m):
+        n = len(self.subx["#BQ"])
+        self.subx["#BQ"].append(m.group(1))
+        return f"`#BQ{n}`"
+
+    def _put_backquote(self, m):
+        return self.subx["#BQ"][int(m.group(1))]
 
     def _get_bracket(self, m):
         n = len(self.subx["#B"])

@@ -18,13 +18,23 @@ A more powerful JSONPath implementation in modern python.
 
 ## Features
 
-- [x] Light. (No need to install third-party dependencies.)
+- [x] **Light. (No need to install third-party dependencies.)**
+- [x] **Support filter operator, including multi-selection, inverse-selection filtering.**
+- [x] **Support sorter operator, including sorting by multiple fields, ascending and descending order.**
 - [x] Support basic semantics of JSONPath.
 - [x] Support output modes: VALUE, PATH.
-- [x] Support filter operator, including multi-selection, inverse-selection filtering.
-- [x] Support sorter operator, including sorting by multiple fields, ascending and descending order.
-- [ ] Support parent operator.
+- [ ] Support embedded syntax.
 - [ ] Support user-defined function.
+- [ ] Support parent operator.
+
+## Installation
+
+```bash
+pip install jsonpath-python
+
+# import
+>>> from jsonpath import JSONPath
+```
 
 ## JSONPath Syntax
 

@@ -2,7 +2,7 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-03-02 14:50:49
+LastEditTime : 2021-03-02 15:18:06
 Description  : JSONPath
 """
 __version__ = "1.0.3"
@@ -270,7 +270,7 @@ class JSONPath:
             if isinstance(obj, dict):
                 obj_ = {}
                 for k in step[1:-1].split(","):
-                    obj_[k] = obj.get(k)
+                    obj_[k] = self._getattr(obj, k)
                 self._trace(obj_, i + 1, path)
             else:
                 raise ExprSyntaxError("field-extractor must acting on dict")

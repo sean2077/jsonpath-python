@@ -2,7 +2,7 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-03-02 19:08:30
+LastEditTime : 2021-03-02 19:53:38
 Description  : JSONPath
 """
 __version__ = "1.0.4"
@@ -73,6 +73,7 @@ class JSONPath:
     )
 
     # annotations
+    f: list
     segments: list
     lpath: int
     subx = defaultdict(list)
@@ -157,7 +158,7 @@ class JSONPath:
         return self.subx["#P"][int(m.group(1))]
 
     @staticmethod
-    def _f_brackets(m):
+    def _gen_obj(m):
         ret = "__obj"
         for e in m.group(1).split("."):
             ret += '["%s"]' % e
@@ -173,7 +174,7 @@ class JSONPath:
                 f(v, i, f"{path}{JSONPath.SEP}{k}", *args)
 
     @staticmethod
-    def _getattr(obj: dict, path: str):
+    def _getattr(obj: dict, path: str, *, convert_number_str=False):
         r = obj
         for k in path.split("."):
             try:
@@ -181,7 +182,13 @@ class JSONPath:
             except (AttributeError, KeyError) as err:
                 logger.error(err)
                 return None
-
+        if convert_number_str and isinstance(r, str):
+            try:
+                if r.isdigit():
+                    return int(r)
+                return float(r)
+            except ValueError:
+                pass
         return r
 
     @staticmethod
@@ -189,10 +196,17 @@ class JSONPath:
         for sortby in sortbys.split(",")[::-1]:
             if sortby.startswith("~"):
                 obj.sort(
-                    key=lambda t, k=sortby: JSONPath._getattr(t[1], k[1:]), reverse=True
+                    key=lambda t, k=sortby: JSONPath._getattr(
+                        t[1], k[1:], convert_number_str=True
+                    ),
+                    reverse=True,
                 )
             else:
-                obj.sort(key=lambda t, k=sortby: JSONPath._getattr(t[1], k))
+                obj.sort(
+                    key=lambda t, k=sortby: JSONPath._getattr(
+                        t[1], k, convert_number_str=True
+                    )
+                )
 
     def _filter(self, obj, i: int, path: str, step: str):
         r = False
@@ -263,7 +277,7 @@ class JSONPath:
         # filter
         if step.startswith("?(") and step.endswith(")"):
             step = step[2:-1]
-            step = JSONPath.REP_FILTER_CONTENT.sub(self._f_brackets, step)
+            step = JSONPath.REP_FILTER_CONTENT.sub(self._gen_obj, step)
             self._traverse(self._filter, obj, i + 1, path, step)
             return
 

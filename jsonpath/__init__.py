@@ -2,7 +2,7 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-03-02 15:56:00
+LastEditTime : 2021-03-02 19:53:38
 Description  : JSONPath
 """
 __version__ = "1.0.4"
@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import re
+import sys
 from collections import defaultdict
 from typing import Union
 
@@ -57,6 +58,8 @@ class JSONPath:
     # save special patterns
     REP_GET_QUOTE = re.compile(r"['](.*?)[']")
     REP_PUT_QUOTE = re.compile(r"#Q(\d+)")
+    REP_GET_BACKQUOTE = re.compile(r"[`](.*?)[`]")
+    REP_PUT_BACKQUOTE = re.compile(r"#BQ(\d+)")
     REP_GET_BRACKET = re.compile(r"[\[](.*?)[\]]")
     REP_PUT_BRACKET = re.compile(r"#B(\d+)")
     REP_GET_PAREN = re.compile(r"[\(](.*?)[\)]")
@@ -70,6 +73,7 @@ class JSONPath:
     )
 
     # annotations
+    f: list
     segments: list
     lpath: int
     subx = defaultdict(list)
@@ -81,6 +85,8 @@ class JSONPath:
         self.segments = expr.split(JSONPath.SEP)
         self.lpath = len(self.segments)
         logger.debug(f"segments  : {self.segments}")
+
+        self.caller_globals = sys._getframe(1).f_globals
 
     def parse(self, obj, result_type="VALUE"):
         if not isinstance(obj, (list, dict)):
@@ -99,14 +105,18 @@ class JSONPath:
 
     def _parse_expr(self, expr):
         logger.debug(f"before expr : {expr}")
-
+        # pick up special patterns
         expr = JSONPath.REP_GET_QUOTE.sub(self._get_quote, expr)
+        expr = JSONPath.REP_GET_BACKQUOTE.sub(self._get_backquote, expr)
         expr = JSONPath.REP_GET_BRACKET.sub(self._get_bracket, expr)
         expr = JSONPath.REP_GET_PAREN.sub(self._get_paren, expr)
+        # split
         expr = JSONPath.REP_DOUBLEDOT.sub(f"{JSONPath.SEP}..{JSONPath.SEP}", expr)
         expr = JSONPath.REP_DOT.sub(JSONPath.SEP, expr)
+        # put back
         expr = JSONPath.REP_PUT_PAREN.sub(self._put_paren, expr)
         expr = JSONPath.REP_PUT_BRACKET.sub(self._put_bracket, expr)
+        expr = JSONPath.REP_PUT_BACKQUOTE.sub(self._put_backquote, expr)
         expr = JSONPath.REP_PUT_QUOTE.sub(self._put_quote, expr)
         if expr.startswith("$;"):
             expr = expr[2:]
@@ -114,6 +124,7 @@ class JSONPath:
         logger.debug(f"after expr  : {expr}")
         return expr
 
+    # TODO abstract get and put procedures
     def _get_quote(self, m):
         n = len(self.subx["#Q"])
         self.subx["#Q"].append(m.group(1))
@@ -121,6 +132,14 @@ class JSONPath:
 
     def _put_quote(self, m):
         return self.subx["#Q"][int(m.group(1))]
+
+    def _get_backquote(self, m):
+        n = len(self.subx["#BQ"])
+        self.subx["#BQ"].append(m.group(1))
+        return f"`#BQ{n}`"
+
+    def _put_backquote(self, m):
+        return self.subx["#BQ"][int(m.group(1))]
 
     def _get_bracket(self, m):
         n = len(self.subx["#B"])
@@ -139,7 +158,7 @@ class JSONPath:
         return self.subx["#P"][int(m.group(1))]
 
     @staticmethod
-    def _f_brackets(m):
+    def _gen_obj(m):
         ret = "__obj"
         for e in m.group(1).split("."):
             ret += '["%s"]' % e
@@ -155,7 +174,7 @@ class JSONPath:
                 f(v, i, f"{path}{JSONPath.SEP}{k}", *args)
 
     @staticmethod
-    def _getattr(obj: dict, path: str):
+    def _getattr(obj: dict, path: str, *, convert_number_str=False):
         r = obj
         for k in path.split("."):
             try:
@@ -163,7 +182,13 @@ class JSONPath:
             except (AttributeError, KeyError) as err:
                 logger.error(err)
                 return None
-
+        if convert_number_str and isinstance(r, str):
+            try:
+                if r.isdigit():
+                    return int(r)
+                return float(r)
+            except ValueError:
+                pass
         return r
 
     @staticmethod
@@ -171,10 +196,17 @@ class JSONPath:
         for sortby in sortbys.split(",")[::-1]:
             if sortby.startswith("~"):
                 obj.sort(
-                    key=lambda t, k=sortby: JSONPath._getattr(t[1], k[1:]), reverse=True
+                    key=lambda t, k=sortby: JSONPath._getattr(
+                        t[1], k[1:], convert_number_str=True
+                    ),
+                    reverse=True,
                 )
             else:
-                obj.sort(key=lambda t, k=sortby: JSONPath._getattr(t[1], k))
+                obj.sort(
+                    key=lambda t, k=sortby: JSONPath._getattr(
+                        t[1], k, convert_number_str=True
+                    )
+                )
 
     def _filter(self, obj, i: int, path: str, step: str):
         r = False
@@ -245,7 +277,7 @@ class JSONPath:
         # filter
         if step.startswith("?(") and step.endswith(")"):
             step = step[2:-1]
-            step = JSONPath.REP_FILTER_CONTENT.sub(self._f_brackets, step)
+            step = JSONPath.REP_FILTER_CONTENT.sub(self._gen_obj, step)
             self._traverse(self._filter, obj, i + 1, path, step)
             return
 

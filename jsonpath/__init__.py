@@ -2,7 +2,7 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-06-04 09:07:14
+LastEditTime : 2021-06-04 10:10:10
 Description  : JSONPath
 """
 __version__ = "1.0.5"
@@ -100,6 +100,9 @@ class JSONPath:
         self._trace(obj, 0, "$")
 
         return self.result
+
+    def search(self, obj, result_type="VALUE"):
+        return self.parse(obj, result_type)
 
     def _parse_expr(self, expr):
         logger.debug(f"before expr : {expr}")
@@ -306,6 +309,21 @@ class JSONPath:
                 raise ExprSyntaxError("field-extractor must acting on dict")
 
             return
+
+
+def compile(expr):
+    return JSONPath(expr)
+
+
+# global cache
+_jsonpath_cache = {}
+
+
+def search(expr, data):
+    global _jsonpath_cache
+    if expr not in _jsonpath_cache:
+        _jsonpath_cache[expr] = JSONPath(expr)
+    return _jsonpath_cache[expr].parse(data)
 
 
 if __name__ == "__main__":

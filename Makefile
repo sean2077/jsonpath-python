@@ -1,24 +1,58 @@
-.PHONY: test install
+# project metadata
+NAME := `python setup.py --name`
+FULLNAME := `python setup.py --fullname`
+VERSION := `python setup.py --version`
+BUILD := `git rev-parse --short HEAD`
 
-install:
-	pip install . --no-index
+.PHONY: info help clean dist docs
+.DEFAULT_GOAL := help
 
-uninstall:
-	pip uninstall jsonpath
+define PRINT_HELP_PYSCRIPT
+import re, sys
 
-test:
-	pytest test -vv -s
+for line in sys.stdin:
+	match = re.match(r'^([a-zA-Z_-]+):.*?## (.*)$$', line)
+	if match:
+		target, help = match.groups()
+		print("%-20s %s" % (target, help))
+endef
+export PRINT_HELP_PYSCRIPT
 
+info: ## project info
+	@echo $(FULLNAME) at $(BUILD)
 
-PYCACHE_DIR := $(shell find . -name '__pycache__' -type d)
-PYTEST_DIR := $(shell find . -name '.pytest_cache' -type d)
-EGG_DIR := $(shell find . -name '*.egg-info' -type d)
+help:
+	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
-clean:
-	rm -rf $(PYCACHE_DIR) ${PYTEST_DIR} ${EGG_DIR} dist
+clean: clean-build clean-pyc ## remove all build, test, coverage and Python artifacts
 
-package: clean
+clean-build: ## remove build artifacts
+	rm -fr build/
+	rm -fr dist/
+	rm -fr .eggs/
+	find . -name '*.egg-info' -exec rm -fr {} +
+	find . -name '*.egg' -exec rm -f {} +
+
+clean-pyc: ## remove Python file artifacts
+	find . -name '*.pyc' -exec rm -f {} +
+	find . -name '*.pyo' -exec rm -f {} +
+	find . -name '*~' -exec rm -f {} +
+	find . -name '__pycache__' -exec rm -fr {} +
+
+lint: ## check style with black
+	find $(NAME) -name '*.py' -type f -not -path "*/pb/*" -not -path "*/data/*" -exec black {} +
+
+docs: ## format docs
+	doctoc --gitlab README.md
+
+install: ## install the package to the active Python's site-packages
+	pip install . -U --no-index
+
+uninstall: ## uninstall the package
+	pip uninstall $(NAME)
+
+dist: clean ## package
 	python3 setup.py sdist bdist_wheel
 
-upload: package
+upload: dist # upload the package to pypi
 	twine upload dist/*

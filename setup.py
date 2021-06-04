@@ -14,9 +14,10 @@ setup(
     url="https://github.com/zhangxianbing/jsonpath-python",
     packages=find_packages(include=["jsonpath*"]),
     classifiers=[
-        "Programming Language :: Python :: 3.6",
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3.6",
     ],
     python_requires=">=3.6",
 )

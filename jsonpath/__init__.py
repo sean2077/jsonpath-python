@@ -2,7 +2,7 @@
 Author       : zhangxianbing
 Date         : 2020-12-27 09:22:14
 LastEditors  : zhangxianbing
-LastEditTime : 2021-03-02 20:01:19
+LastEditTime : 2021-06-04 09:07:14
 Description  : JSONPath
 """
 __version__ = "1.0.5"
@@ -15,8 +15,6 @@ import re
 import sys
 from collections import defaultdict
 from typing import Union
-
-# pylint: disable=invalid-name,missing-function-docstring,missing-class-docstring,eval-used,logging-fstring-interpolation
 
 
 def create_logger(name: str = None, level: Union[int, str] = logging.INFO):

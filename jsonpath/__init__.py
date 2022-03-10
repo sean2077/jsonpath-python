@@ -77,7 +77,7 @@ class JSONPath:
     subx = defaultdict(list)
     result: list
     result_type: str
-    eval_func: Callable
+    eval_func: callable
 
     def __init__(self, expr: str):
         expr = self._parse_expr(expr)

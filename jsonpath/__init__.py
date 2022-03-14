@@ -77,6 +77,7 @@ class JSONPath:
     subx = defaultdict(list)
     result: list
     result_type: str
+    eval_func: callable
 
     def __init__(self, expr: str):
         expr = self._parse_expr(expr)
@@ -86,7 +87,7 @@ class JSONPath:
 
         self.caller_globals = sys._getframe(1).f_globals
 
-    def parse(self, obj, result_type="VALUE"):
+    def parse(self, obj, result_type="VALUE", eval_func=eval):
         if not isinstance(obj, (list, dict)):
             raise TypeError("obj must be a list or a dict.")
 
@@ -95,6 +96,7 @@ class JSONPath:
                 f"result_type must be one of {tuple(JSONPath.RESULT_TYPE.keys())}"
             )
         self.result_type = result_type
+        self.eval_func = eval_func
 
         self.result = []
         self._trace(obj, 0, "$")
@@ -212,7 +214,7 @@ class JSONPath:
     def _filter(self, obj, i: int, path: str, step: str):
         r = False
         try:
-            r = eval(step, None, {"__obj": obj})
+            r = self.eval_func(step, None, {"__obj": obj})
         except Exception as err:
             logger.error(err)
         if r:
@@ -263,7 +265,7 @@ class JSONPath:
         # slice
         if isinstance(obj, list) and JSONPath.REP_SLICE_CONTENT.fullmatch(step):
             obj = list(enumerate(obj))
-            vals = eval(f"obj[{step}]")
+            vals = self.eval_func(f"obj[{step}]")
             for idx, v in vals:
                 self._trace(v, i + 1, f"{path}{JSONPath.SEP}{idx}")
             return

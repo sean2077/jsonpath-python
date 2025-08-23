@@ -11,7 +11,7 @@ setup(
     description="A more powerful JSONPath implementation in modern python",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/zhangxianbing/jsonpath-python",
+    url="https://github.com/sean2077/jsonpath-python",
     packages=find_packages(include=["jsonpath*"]),
     classifiers=[
         "Development Status :: 3 - Alpha",

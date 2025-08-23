@@ -1,12 +1,12 @@
 """
-Author       : zhangxianbing
+Author       : sean2077
 Date         : 2020-12-27 09:22:14
-LastEditors  : zhangxianbing
+LastEditors  : sean2077
 LastEditTime : 2022-03-14 10:33:55
 Description  : JSONPath
 """
 __version__ = "1.0.6"
-__author__ = "zhangxianbing"
+__author__ = "sean2077"
 
 import json
 import logging

@@ -58,7 +58,7 @@ class JSONPath:
     # operators
     REP_SLICE_CONTENT = re.compile(r"^(-?\d*)?:(-?\d*)?(:-?\d*)?$")
     REP_SELECT_CONTENT = re.compile(r"^([\w.']+)(, ?[\w.']+)+$")
-    REP_FILTER_CONTENT = re.compile(r"@([.\[].*?)(?=<=|>=|==|!=|>|<| in| not| is)|len\(@([.\[].*?)\)")
+    REP_FILTER_CONTENT = re.compile(r"@([.\[].*?)(?=<=|>=|==|!=|>|<| in| not| is|\s|\)|$)|len\(@([.\[].*?)\)")
 
     # annotations
     f: list
@@ -216,7 +216,7 @@ class JSONPath:
     def _filter(self, obj, i: int, path: str, step: str):
         r = False
         try:
-            r = self.eval_func(step, None, {"__obj": obj})
+            r = self.eval_func(step, None, {"__obj": obj, "RegexPattern": RegexPattern})
         except Exception:
             pass
         if r:
@@ -293,6 +293,10 @@ class JSONPath:
         if step.startswith("?(") and step.endswith(")"):
             step = step[2:-1]
             step = JSONPath.REP_FILTER_CONTENT.sub(self._gen_obj, step)
+
+            if "=~" in step:
+                step = re.sub(r"=~\s*/(.*?)/", r"@ RegexPattern(r'\1')", step)
+
             if isinstance(obj, dict):
                 self._filter(obj, i + 1, path, step)
             self._traverse(self._filter, obj, i + 1, path, step)
@@ -330,6 +334,16 @@ class JSONPath:
                 raise ExprSyntaxError("field-extractor must acting on dict")
 
             return
+
+
+class RegexPattern:
+    def __init__(self, pattern):
+        self.pattern = pattern
+
+    def __rmatmul__(self, other):
+        if isinstance(other, str):
+            return bool(re.search(self.pattern, other))
+        return False
 
 
 def compile(expr):

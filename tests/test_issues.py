@@ -143,3 +143,32 @@ def test_sorting_with_missing_keys():
     data2 = [{"other": 1}, {"other": 2}]
     with pytest.raises(JSONPathTypeError):
         JSONPath("$./(val)").parse(data2)
+
+
+def test_issue_13_contains_and_regex():
+    data = {
+        "products": [
+            {"name": "Apple", "tags": ["fruit", "red"]},
+            {"name": "Banana", "tags": ["fruit", "yellow"]},
+            {"name": "Carrot", "tags": ["vegetable", "orange"]},
+        ]
+    }
+
+    # Case 1: 'in' operator (list contains)
+    # Check if 'fruit' is in tags list
+    expr_in_list = "$.products[?('fruit' in @.tags)].name"
+    assert JSONPath(expr_in_list).parse(data) == ["Apple", "Banana"]
+
+    # Case 2: 'in' operator (string contains)
+    # Check if 'App' is in name
+    expr_in_str = "$.products[?('App' in @.name)].name"
+    assert JSONPath(expr_in_str).parse(data) == ["Apple"]
+
+    # Case 3: Regex operator =~
+    # Check if name starts with 'B'
+    expr_regex = "$.products[?(@.name =~ /B.*/)].name"
+    assert JSONPath(expr_regex).parse(data) == ["Banana"]
+
+    # Case 4: Case insensitive regex
+    expr_regex_case = "$.products[?(@.name =~ /(?i)apple/)].name"
+    assert JSONPath(expr_regex_case).parse(data) == ["Apple"]

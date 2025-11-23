@@ -53,7 +53,7 @@ class JSONPath:
     # operators
     REP_SLICE_CONTENT = re.compile(r"^(-?\d*)?:(-?\d*)?(:-?\d*)?$")
     REP_SELECT_CONTENT = re.compile(r"^([\w.']+)(, ?[\w.']+)+$")
-    REP_FILTER_CONTENT = re.compile(r"@\.(.*?)(?=<=|>=|==|!=|>|<| in| not| is)|len\(@\.(.*?)\)")
+    REP_FILTER_CONTENT = re.compile(r"@([.\[].*?)(?=<=|>=|==|!=|>|<| in| not| is)|len\(@([.\[].*?)\)")
 
     # annotations
     f: list
@@ -94,15 +94,15 @@ class JSONPath:
         # pick up special patterns
         expr = JSONPath.REP_GET_QUOTE.sub(self._get_quote, expr)
         expr = JSONPath.REP_GET_BACKQUOTE.sub(self._get_backquote, expr)
+        expr = JSONPath.REP_GET_PAREN.sub(self._get_paren, expr)
         expr = JSONPath.REP_GET_BRACKET.sub(self._get_bracket, expr)
         expr = re.sub(r"\.(\.#B)", r"\1", expr)
-        expr = JSONPath.REP_GET_PAREN.sub(self._get_paren, expr)
         # split
         expr = JSONPath.REP_DOUBLEDOT.sub(f"{JSONPath.SEP}..{JSONPath.SEP}", expr)
         expr = JSONPath.REP_DOT.sub(JSONPath.SEP, expr)
         # put back
-        expr = JSONPath.REP_PUT_PAREN.sub(self._put_paren, expr)
         expr = JSONPath.REP_PUT_BRACKET.sub(self._put_bracket, expr)
+        expr = JSONPath.REP_PUT_PAREN.sub(self._put_paren, expr)
         expr = JSONPath.REP_PUT_BACKQUOTE.sub(self._put_backquote, expr)
         expr = JSONPath.REP_PUT_QUOTE.sub(self._put_quote, expr)
         if expr.startswith("$;"):
@@ -147,12 +147,15 @@ class JSONPath:
     @staticmethod
     def _gen_obj(m):
         content = m.group(1) or m.group(2)  # group 2 is for len()
-        ret = "__obj"
-        for e in content.split("."):
-            if len(e) >= 2 and ((e[0] == "'" and e[-1] == "'") or (e[0] == '"' and e[-1] == '"')):
-                e = e[1:-1]
-            ret += f'["{e}"]'
-        return ret
+
+        def repl(m):
+            g = m.group(1)
+            if g[0] in ("'", '"'):
+                return f"[{g}]"
+            return f"['{g}']"
+
+        content = re.sub(r"\.(\w+|'[^']*'|\"[^\"]*\")", repl, content)
+        return "__obj" + content
 
     @staticmethod
     def _traverse(f, obj, i: int, path: str, *args):
@@ -275,6 +278,8 @@ class JSONPath:
         if step.startswith("?(") and step.endswith(")"):
             step = step[2:-1]
             step = JSONPath.REP_FILTER_CONTENT.sub(self._gen_obj, step)
+            if isinstance(obj, dict):
+                self._filter(obj, i + 1, path, step)
             self._traverse(self._filter, obj, i + 1, path, step)
             return
 

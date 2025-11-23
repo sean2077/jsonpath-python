@@ -44,3 +44,23 @@ def test_issue_16_quoted_keys():
     assert JSONPath('$.\'user-list\'[?(@."city-name"=="Austin")]').parse(data) == [
         {"city-name": "Austin", "name": "John"}
     ]
+
+
+def test_issue_15_bracket_notation_in_filter():
+    data = {
+        "tool": {
+            "books": [
+                {"properties": [{"name": "moq", "value": "x"}, {"name": "url", "value": "1"}]},
+                {"properties": [{"name": "url", "value": "3"}]},
+                {"properties": [{"name": "moq", "value": "q"}, {"name": "url", "value": "4"}]},
+            ]
+        }
+    }
+
+    # Case 1: Bracket notation in filter
+    expr = "$['tool']['books'][*]['properties'][*][?(@['name'] == 'moq')]['value']"
+    assert JSONPath(expr).parse(data) == ["x", "q"]
+
+    # Case 2: Dot notation in filter (already working, but good to keep)
+    expr_dot = "$.tool.books.[*].properties.[*].[?(@.name=='moq')].value"
+    assert JSONPath(expr_dot).parse(data) == ["x", "q"]

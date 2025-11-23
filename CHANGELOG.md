@@ -1,3 +1,21 @@
+## [1.1.0](https://github.com/sean2077/jsonpath-python/compare/v1.0.5...1.1.0) (2025-11-23)
+
+### Fixes
+
+* modernize project structure and fix path output ([#7](https://github.com/sean2077/jsonpath-python/issues/7)) ([7713759](https://github.com/sean2077/jsonpath-python/commit/7713759874626fb9595c58d7e7f8e6a6cee2c7ce))
+* resolve issue [#10](https://github.com/sean2077/jsonpath-python/issues/10) by raising JSONPathTypeError on mixed type sorting ([8ac2080](https://github.com/sean2077/jsonpath-python/commit/8ac2080c1ff5b520b66a8e5f22a6d0a025d6776f))
+* resolve issue [#15](https://github.com/sean2077/jsonpath-python/issues/15) where filters with bracket notation returned empty results ([100bf6f](https://github.com/sean2077/jsonpath-python/commit/100bf6fda10d9802cff7223e443a11fb63f1409a))
+* resolve issue [#16](https://github.com/sean2077/jsonpath-python/issues/16) support quoted keys in filters and paths ([6caa9d4](https://github.com/sean2077/jsonpath-python/commit/6caa9d4e0e9a95363edc6024b41d5b8ea5e785c0))
+* resolve issue [#17](https://github.com/sean2077/jsonpath-python/issues/17) false positive errors and parsing bugs ([47bba25](https://github.com/sean2077/jsonpath-python/commit/47bba251233b8f96963dc22e2e83238b417e332a))
+* resolve issue [#9](https://github.com/sean2077/jsonpath-python/issues/9) by filtering out missing keys in field extractor ([5e38031](https://github.com/sean2077/jsonpath-python/commit/5e38031611c3623910150320760abd5c852c93aa))
+
+### Features
+
+* add search and complie interfaces ([8dcf854](https://github.com/sean2077/jsonpath-python/commit/8dcf854d467ebf1dfa3587eedfb5292ebc089c78))
+* add update function to JSONPath class ([#12](https://github.com/sean2077/jsonpath-python/issues/12)) ([d396bc5](https://github.com/sean2077/jsonpath-python/commit/d396bc5c2e19d3f081a76eed7e95a893f0d7cd5e))
+* Custom eval implementation ([22d7154](https://github.com/sean2077/jsonpath-python/commit/22d7154560dbc3eca2e6025f95cce4dd4b8654d9))
+* resolve issue [#13](https://github.com/sean2077/jsonpath-python/issues/13) by adding support for 'in' operator and regex matching (=~) ([a5e2973](https://github.com/sean2077/jsonpath-python/commit/a5e2973b42f1d6b14d20cae48f250501cb81d341))
+
 # Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.

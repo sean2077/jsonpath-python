@@ -3,7 +3,7 @@ import os
 import re
 import sys
 from collections import defaultdict
-from typing import Union
+from typing import Any, Callable, Union
 
 
 def create_logger(name: str = None, level: Union[int, str] = logging.INFO):
@@ -59,6 +59,7 @@ class JSONPath:
     REP_SLICE_CONTENT = re.compile(r"^(-?\d*)?:(-?\d*)?(:-?\d*)?$")
     REP_SELECT_CONTENT = re.compile(r"^([\w.']+)(, ?[\w.']+)+$")
     REP_FILTER_CONTENT = re.compile(r"@([.\[].*?)(?=<=|>=|==|!=|>|<| in| not| is|\s|\)|$)|len\(@([.\[].*?)\)")
+    REP_PATH_SEGMENT = re.compile(r"(?:\.|^)(?P<dot>\w+)|\[['\"](?P<quote>.*?)['\"]\]|\[(?P<int>\d+)\]")
 
     # annotations
     f: list
@@ -110,7 +111,9 @@ class JSONPath:
         expr = JSONPath.REP_PUT_PAREN.sub(self._put_paren, expr)
         expr = JSONPath.REP_PUT_BACKQUOTE.sub(self._put_backquote, expr)
         expr = JSONPath.REP_PUT_QUOTE.sub(self._put_quote, expr)
-        if expr.startswith("$;"):
+        if expr == "$":
+            expr = ""
+        elif expr.startswith("$;"):
             expr = expr[2:]
 
         logger.debug(f"after expr  : {expr}")
@@ -334,6 +337,46 @@ class JSONPath:
                 raise ExprSyntaxError("field-extractor must acting on dict")
 
             return
+
+    def update(self, obj: Union[list, dict], value_or_func: Union[Any, Callable[[Any], Any]]) -> Any:
+        paths = self.parse(obj, result_type="PATH")
+        for path in paths:
+            matches = list(JSONPath.REP_PATH_SEGMENT.finditer(path))
+            if not matches:
+                # Root object
+                if isinstance(value_or_func, Callable):
+                    obj = value_or_func(obj)
+                else:
+                    obj = value_or_func
+                continue
+
+            target = obj
+            # Traverse to parent
+            for match in matches[:-1]:
+                group = match.groupdict()
+                if group["dot"]:
+                    target = target[group["dot"]]
+                elif group["quote"]:
+                    target = target[group["quote"]]
+                elif group["int"]:
+                    target = target[int(group["int"])]
+
+            # Update last segment
+            last_match = matches[-1]
+            group = last_match.groupdict()
+            if group["dot"]:
+                key = group["dot"]
+            elif group["quote"]:
+                key = group["quote"]
+            elif group["int"]:
+                key = int(group["int"])
+
+            if isinstance(value_or_func, Callable):
+                target[key] = value_or_func(target[key])
+            else:
+                target[key] = value_or_func
+
+        return obj
 
 
 class RegexPattern:

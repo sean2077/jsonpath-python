@@ -20,7 +20,7 @@ plugins:
     - changelogFile: CHANGELOG.md
   - - "@semantic-release/exec"
     - prepareCmd: |
-        sed -i 's/__version__ = ".*"/__version__ = "${nextRelease.version}"/' jsonpath/__init__.py
+        python -c "import re; content = open('jsonpath/__init__.py').read(); open('jsonpath/__init__.py', 'w').write(re.sub(r'__version__ = \".*?\"', '__version__ = \"${nextRelease.version}\"', content))"
         uv version "${nextRelease.version}"
       publishCmd: uv build
   - - "@semantic-release/git"

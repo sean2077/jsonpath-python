@@ -66,7 +66,7 @@ class JSONPath:
 
     def __init__(self, expr: str):
         expr = self._parse_expr(expr)
-        self.segments = expr.split(JSONPath.SEP)
+        self.segments = [s for s in expr.split(JSONPath.SEP) if s]
         self.lpath = len(self.segments)
         logger.debug(f"segments  : {self.segments}")
 
@@ -95,6 +95,7 @@ class JSONPath:
         expr = JSONPath.REP_GET_QUOTE.sub(self._get_quote, expr)
         expr = JSONPath.REP_GET_BACKQUOTE.sub(self._get_backquote, expr)
         expr = JSONPath.REP_GET_BRACKET.sub(self._get_bracket, expr)
+        expr = re.sub(r"\.(\.#B)", r"\1", expr)
         expr = JSONPath.REP_GET_PAREN.sub(self._get_paren, expr)
         # split
         expr = JSONPath.REP_DOUBLEDOT.sub(f"{JSONPath.SEP}..{JSONPath.SEP}", expr)
@@ -195,8 +196,8 @@ class JSONPath:
         r = False
         try:
             r = self.eval_func(step, None, {"__obj": obj})
-        except Exception as err:
-            logger.error(err)
+        except Exception:
+            pass
         if r:
             self._trace(obj, i, path)
 

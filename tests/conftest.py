@@ -5,7 +5,7 @@ import pytest
 
 TestCase = namedtuple("TestCase", ("expr", "data", "result"))
 
-with open("test/data/2.json", "rb") as f:
+with open("tests/data/2.json", "rb") as f:
     data = json.load(f)
 
 
@@ -97,84 +97,82 @@ def value_cases(request):
 
 @pytest.fixture(
     params=[
-        TestCase("$.*", data, ["$;a.b c", "$;book", "$;bicycle", "$;scores"]),
-        TestCase("$.book", data, ["$;book"]),
-        TestCase("$[book]", data, ["$;book"]),
-        TestCase("$.'a.b c'", data, ["$;a.b c"]),
-        TestCase("$['a.b c']", data, ["$;a.b c"]),
+        TestCase("$.*", data, ["$['a.b c']", "$.book", "$.bicycle", "$.scores"]),
+        TestCase("$.book", data, ["$.book"]),
+        TestCase("$[book]", data, ["$.book"]),
+        TestCase("$.'a.b c'", data, ["$['a.b c']"]),
+        TestCase("$['a.b c']", data, ["$['a.b c']"]),
         # recursive descent
         TestCase(
             "$..price",
             data,
             [
-                "$;book;0;price",
-                "$;book;1;price",
-                "$;book;2;price",
-                "$;book;3;price",
-                "$;bicycle;price",
+                "$.book[0].price",
+                "$.book[1].price",
+                "$.book[2].price",
+                "$.book[3].price",
+                "$.bicycle.price",
             ],
         ),
         # slice
-        TestCase("$.book[1:3]", data, ["$;book;1", "$;book;2"]),
-        TestCase("$.book[1:-1]", data, ["$;book;1", "$;book;2"]),
-        TestCase("$.book[0:-1:2]", data, ["$;book;0", "$;book;2"]),
+        TestCase("$.book[1:3]", data, ["$.book[1]", "$.book[2]"]),
+        TestCase("$.book[1:-1]", data, ["$.book[1]", "$.book[2]"]),
+        TestCase("$.book[0:-1:2]", data, ["$.book[0]", "$.book[2]"]),
         TestCase("$.book[-1:1]", data, []),
         TestCase("$.book[-1:-11:3]", data, []),
-        TestCase("$.book[:]", data, ["$;book;0", "$;book;1", "$;book;2", "$;book;3"]),
+        TestCase("$.book[:]", data, ["$.book[0]", "$.book[1]", "$.book[2]", "$.book[3]"]),
         # filter
         TestCase(
             "$.book[?(@.price>8 and @.price<9)].price",
             data,
-            ["$;book;0;price", "$;book;2;price"],
+            ["$.book[0].price", "$.book[2].price"],
         ),
-        TestCase(
-            '$.book[?(@.category=="reference")].category', data, ["$;book;0;category"]
-        ),
+        TestCase('$.book[?(@.category=="reference")].category', data, ["$.book[0].category"]),
         TestCase(
             '$.book[?(@.category!="reference" and @.price<9)].title',
             data,
-            ["$;book;2;title"],
+            ["$.book[2].title"],
         ),
         TestCase(
             '$.book[?(@.author=="Herman Melville" or @.author=="Evelyn Waugh")].author',
             data,
-            ["$;book;1;author", "$;book;2;author"],
+            ["$.book[1].author", "$.book[2].author"],
         ),
         # sort
         TestCase(
             "$.book[/(price)].price",
             data,
-            ["$;book;0;price", "$;book;2;price", "$;book;1;price", "$;book;3;price"],
+            ["$.book[0].price", "$.book[2].price", "$.book[1].price", "$.book[3].price"],
         ),
         TestCase(
             "$.book[/(~price)].price",
             data,
-            ["$;book;3;price", "$;book;1;price", "$;book;2;price", "$;book;0;price"],
+            ["$.book[3].price", "$.book[1].price", "$.book[2].price", "$.book[0].price"],
         ),
         TestCase(
             "$.book[/(category,price)].price",
             data,
-            ["$;book;2;price", "$;book;1;price", "$;book;3;price", "$;book;0;price"],
+            ["$.book[2].price", "$.book[1].price", "$.book[3].price", "$.book[0].price"],
         ),
         TestCase(
             "$.book[/(brand.version)].brand.version",
             data,
             [
-                "$;book;1;brand;version",
-                "$;book;0;brand;version",
-                "$;book;2;brand;version",
-                "$;book;3;brand;version",
+                "$.book[1].brand.version",
+                "$.book[0].brand.version",
+                "$.book[2].brand.version",
+                "$.book[3].brand.version",
             ],
         ),
         TestCase(
             "$.scores[/(score)].score",
             data,
             [
-                "$;scores;chinese;score",
-                "$;scores;chemistry;score",
-                "$;scores;physic;score",
-                "$;scores;english;score",
-                "$;scores;math;score",
+                "$.scores.chinese.score",
+                "$.scores.chemistry.score",
+                "$.scores.physic.score",
+                "$.scores.english.score",
+                "$.scores.math.score",
             ],
         ),
     ]

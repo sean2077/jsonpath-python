@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jsonpath-python"
+version = "1.0.6"
+description = "A more powerful JSONPath implementation in modern python"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "sean2077", email = "sean2077@users.noreply.github.com" }]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Text Processing :: Markup",
+]
+keywords = ["jsonpath", "json", "path", "parser", "extractor"]
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.3"]
+
+[project.urls]
+Homepage = "https://github.com/sean2077/jsonpath-python"
+Repository = "https://github.com/sean2077/jsonpath-python"
+Issues = "https://github.com/sean2077/jsonpath-python/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["jsonpath"]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+fix = true
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "W",   # pycodestyle warnings
+  "B",   # flake8-bugbear
+  "I",   # isort
+  "N",   # pep8-naming
+  "UP",  # pyupgrade
+  "C4",  # flake8-comprehensions
+  "PLC", # pylint conventions
+]
+ignore = [
+  "E501", # line length handled by ruff format
+  "B008", # function calls in argument defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+  "PLC0415", # allow imports inside functions in tests
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+# Development Tasks (using poethepoet)
+[tool.poe.tasks.format]
+cmd = "ruff format . && ruff check . --fix --select I"
+help = "Format code and organize imports"
+
+[tool.poe.tasks.lint]
+cmd = "ruff check ."
+help = "Run linter"
+
+[tool.poe.tasks.test]
+cmd = "pytest"
+help = "Run tests"
+
+[tool.poe.tasks.update-deps]
+cmd = "uv sync --all-extras --upgrade --index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
+help = "Update all dependencies"

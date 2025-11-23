@@ -55,14 +55,12 @@ jobs:
         run: uv sync --extra dev
 
       - name: Run tests with coverage
-        run: uv run pytest -v --cov=jsonpath --cov-report=xml --cov-report=html
+        run: uv run pytest -v --cov=jsonpath --cov-branch --cov-report=xml --cov-report=html
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.12'
         uses: codecov/codecov-action@v5
         with:
-          files: ./coverage.xml
-          flags: unittests
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 

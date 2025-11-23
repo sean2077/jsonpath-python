@@ -101,3 +101,45 @@ def test_issue_10_mixed_type_sorting():
     data6 = [{"code": 1}, {"other": 2}]
     with pytest.raises(JSONPathTypeError):
         JSONPath("$./(code)").parse(data6)
+
+
+def test_issue_9_filter_nulls_in_field_extractor():
+    data = [
+        {
+            "author": [
+                {"fullname": "some fullname", "rank": 3},
+                {
+                    "fullname": "other fullname",
+                    "pid": {
+                        "id": {"scheme": "orcid", "value": "0000-0000-0000-0000"},
+                        "provenance": {"provenance": "Harvested", "trust": "0.91"},
+                    },
+                    "rank": 4,
+                },
+            ]
+        }
+    ]
+
+    expr = "$.*.author[*].(fullname,pid.id.value,pid.id.scheme)"
+    result = JSONPath(expr).parse(data)
+
+    # First item should only have fullname, as pid.id... are missing
+    assert result[0] == {"fullname": "some fullname"}
+
+    # Second item should have all fields
+    assert result[1] == {"fullname": "other fullname", "pid.id.value": "0000-0000-0000-0000", "pid.id.scheme": "orcid"}
+
+
+def test_sorting_with_missing_keys():
+    # Verify that missing keys are treated as None during sort (and thus come first or raise error if mixed)
+    # Case 1: Missing keys vs Integers
+    # None vs Int -> TypeError in Python 3. So this should raise JSONPathTypeError
+    data = [{"val": 10}, {"other": 5}]  # second item has missing "val" -> None
+
+    with pytest.raises(JSONPathTypeError):
+        JSONPath("$./(val)").parse(data)
+
+    # Case 2: All missing keys (all None) -> Should raise JSONPathTypeError because None < None is not supported in Python 3
+    data2 = [{"other": 1}, {"other": 2}]
+    with pytest.raises(JSONPathTypeError):
+        JSONPath("$./(val)").parse(data2)

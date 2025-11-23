@@ -41,6 +41,7 @@ class JSONPath:
 
     # common patterns
     SEP = ";"
+    _MISSING = object()
     REP_DOUBLEDOT = re.compile(r"\.\.")
     REP_DOT = re.compile(r"(?<!\.)\.(?!\.)")
 
@@ -177,11 +178,14 @@ class JSONPath:
     def _getattr(obj: dict, path: str, *, convert_number_str=False):
         r = obj
         for k in path.split("."):
-            try:
-                r = r.get(k)
-            except (AttributeError, KeyError) as err:
-                logger.error(err)
-                return None
+            if isinstance(r, dict):
+                if k in r:
+                    r = r[k]
+                else:
+                    return JSONPath._MISSING
+            else:
+                return JSONPath._MISSING
+
         if convert_number_str and isinstance(r, str):
             try:
                 if r.isdigit():
@@ -193,15 +197,19 @@ class JSONPath:
 
     @staticmethod
     def _sorter(obj, sortbys):
+        def key_func(t, k):
+            v = JSONPath._getattr(t[1], k, convert_number_str=True)
+            return v if v is not JSONPath._MISSING else None
+
         try:
             for sortby in sortbys.split(",")[::-1]:
                 if sortby.startswith("~"):
                     obj.sort(
-                        key=lambda t, k=sortby: JSONPath._getattr(t[1], k[1:], convert_number_str=True),
+                        key=lambda t, k=sortby: key_func(t, k[1:]),
                         reverse=True,
                     )
                 else:
-                    obj.sort(key=lambda t, k=sortby: JSONPath._getattr(t[1], k, convert_number_str=True))
+                    obj.sort(key=lambda t, k=sortby: key_func(t, k))
         except TypeError as e:
             raise JSONPathTypeError(f"not possible to compare str and int when sorting: {e}") from e
 
@@ -314,7 +322,9 @@ class JSONPath:
             if isinstance(obj, dict):
                 obj_ = {}
                 for k in step[1:-1].split(","):
-                    obj_[k] = self._getattr(obj, k)
+                    v = self._getattr(obj, k)
+                    if v is not JSONPath._MISSING:
+                        obj_[k] = v
                 self._trace(obj_, i + 1, path)
             else:
                 raise ExprSyntaxError("field-extractor must acting on dict")

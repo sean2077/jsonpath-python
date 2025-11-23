@@ -6,9 +6,9 @@ A lightweight and powerful JSONPath implementation for Python.
 
 There are already several JSONPath libraries in Python, so why choose this one?
 
-1.  **Lightweight & Zero Dependency**: Unlike `jsonpath-ng` which relies on complex AST parsing frameworks like `ply`, `jsonpath-python` is implemented with pure Python string parsing. It has **zero third-party dependencies**, making it incredibly easy to integrate into any environment (including restricted ones like AWS Lambda or embedded systems).
+1.  **Lightweight & Zero Dependency**: Unlike `jsonpath-ng` which relies on complex AST parsing frameworks like `ply`, `jsonpath-python` is implemented with pure Python string parsing. It has **zero third-party dependencies**, making it incredibly easy to integrate into any environment.
 2.  **Simple & Pythonic**: The implementation is straightforward and linear. If you encounter a bug or need to extend it, the code is easy to read and modify. You can even copy the core file directly into your project as a utility.
-3.  **Powerful Features**: It supports advanced features like **sorting**, **filtering**, and **updating** JSON data, which are often missing or incomplete in other lightweight implementations.
+3.  **Powerful Features**: It supports advanced features like **sorting**, **filtering**, and **updating** JSON data. If you require strict adherence to the JSONPath standard (RFC 9535), other libraries might be more suitable, but for practical data manipulation, this library offers more power.
 
 ## Features
 
@@ -255,11 +255,3 @@ data = {
     }
 }
 ```
-
-## Todo List
-
-- Support embedded syntax.
-- Support user-defined function.
-- Syntax and character set (refer to k8s)
-
-> The name segment is required and must be 63 characters or less, beginning and ending with an alphanumeric character (`[a-z0-9A-Z]`) with dashes (`-`), underscores (`_`), dots (`.`), and alphanumerics between.

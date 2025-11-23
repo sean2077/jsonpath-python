@@ -118,7 +118,7 @@ class JSONPath:
         return f"#Q{n}"
 
     def _put_quote(self, m):
-        return self.subx["#Q"][int(m.group(1))]
+        return f"'{self.subx['#Q'][int(m.group(1))]}'"
 
     def _get_backquote(self, m):
         n = len(self.subx["#BQ"])
@@ -146,8 +146,11 @@ class JSONPath:
 
     @staticmethod
     def _gen_obj(m):
+        content = m.group(1) or m.group(2)  # group 2 is for len()
         ret = "__obj"
-        for e in m.group(1).split("."):
+        for e in content.split("."):
+            if len(e) >= 2 and ((e[0] == "'" and e[-1] == "'") or (e[0] == '"' and e[-1] == '"')):
+                e = e[1:-1]
             ret += f'["{e}"]'
         return ret
 
@@ -239,11 +242,15 @@ class JSONPath:
             return
 
         # get value from dict
-        if isinstance(obj, dict) and step in obj:
-            if re.match(r"^\w+$", step):
-                self._trace(obj[step], i + 1, f"{path}.{step}")
+        step_key = step
+        if len(step) >= 2 and step[0] == "'" and step[-1] == "'":
+            step_key = step[1:-1]
+
+        if isinstance(obj, dict) and step_key in obj:
+            if re.match(r"^\w+$", step_key):
+                self._trace(obj[step_key], i + 1, f"{path}.{step_key}")
             else:
-                self._trace(obj[step], i + 1, f"{path}['{step}']")
+                self._trace(obj[step_key], i + 1, f"{path}['{step_key}']")
             return
 
         # slice

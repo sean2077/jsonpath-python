@@ -29,6 +29,10 @@ class ExprSyntaxError(Exception):
     pass
 
 
+class JSONPathTypeError(Exception):
+    pass
+
+
 class JSONPath:
     RESULT_TYPE = {
         "VALUE": "A list of specific values.",
@@ -189,14 +193,17 @@ class JSONPath:
 
     @staticmethod
     def _sorter(obj, sortbys):
-        for sortby in sortbys.split(",")[::-1]:
-            if sortby.startswith("~"):
-                obj.sort(
-                    key=lambda t, k=sortby: JSONPath._getattr(t[1], k[1:], convert_number_str=True),
-                    reverse=True,
-                )
-            else:
-                obj.sort(key=lambda t, k=sortby: JSONPath._getattr(t[1], k, convert_number_str=True))
+        try:
+            for sortby in sortbys.split(",")[::-1]:
+                if sortby.startswith("~"):
+                    obj.sort(
+                        key=lambda t, k=sortby: JSONPath._getattr(t[1], k[1:], convert_number_str=True),
+                        reverse=True,
+                    )
+                else:
+                    obj.sort(key=lambda t, k=sortby: JSONPath._getattr(t[1], k, convert_number_str=True))
+        except TypeError as e:
+            raise JSONPathTypeError(f"not possible to compare str and int when sorting: {e}") from e
 
     def _filter(self, obj, i: int, path: str, step: str):
         r = False

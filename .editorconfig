@@ -1,0 +1,42 @@
+# EditorConfig for a Python project
+# Adjust as needed for your team's conventions.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Python source files
+[*.{py,pyi,pyx,pxd}]
+indent_style = space
+indent_size = 4
+# Common hint matching Black's default line length
+max_line_length = 120
+
+# Config and data files
+[*.{json,jsonc,toml,yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Markdown: keep trailing spaces (they can mean a line break)
+[*.md]
+trim_trailing_whitespace = false
+
+# Makefile requires tabs
+[Makefile]
+indent_style = tab
+
+# Shell scripts
+[*.{sh,bash,zsh}]
+indent_style = space
+indent_size = 2
+
+# This file itself
+[*.editorconfig]
+indent_style = space
+indent_size = 2

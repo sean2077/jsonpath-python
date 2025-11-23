@@ -1,0 +1,36 @@
+branches:
+  - main
+  - name: dev
+    channel: dev
+    prerelease: dev
+tagFormat: ${version}
+preset: conventionalcommits
+plugins:
+  - "@semantic-release/commit-analyzer"
+  - - "@semantic-release/release-notes-generator"
+    - presetConfig:
+        types:
+          - type: "fix"
+            section: "Fixes"
+          - type: "feat"
+            section: "Features"
+          - type: "perf"
+            section: "Performance Improvements"
+  - - "@semantic-release/changelog"
+    - changelogFile: CHANGELOG.md
+  - - "@semantic-release/exec"
+    - prepareCmd: |
+        sed -i 's/__version__ = ".*"/__version__ = "${nextRelease.version}"/' jsonpath/__init__.py
+        uv version "${nextRelease.version}"
+      publishCmd: uv build
+  - - "@semantic-release/git"
+    - assets:
+        - CHANGELOG.md
+        - jsonpath/__init__.py
+        - pyproject.toml
+        - uv.lock
+      message: |-
+        chore(release): ${nextRelease.version} [skip ci]
+
+        ${nextRelease.notes}
+  - "@semantic-release/github"

@@ -1,31 +1,24 @@
-- [jsonpath-python](#jsonpath-python)
-  - [Features](#features)
-  - [JSONPath Syntax](#jsonpath-syntax)
-    - [Operators](#operators)
-    - [Examples](#examples)
-      - [Select Fields](#select-fields)
-      - [Recursive Descent](#recursive-descent)
-      - [Slice](#slice)
-      - [Filter Expression](#filter-expression)
-      - [Sorter Expression](#sorter-expression)
-      - [Field-Extractor Expression](#field-extractor-expression)
-    - [Appendix: Example JSON data:](#appendix-example-json-data)
-  - [Todo List](#todo-list)
-
 # jsonpath-python
 
-A more powerful JSONPath implementation in modern python.
+A lightweight and powerful JSONPath implementation for Python.
+
+## Why jsonpath-python?
+
+There are already several JSONPath libraries in Python, so why choose this one?
+
+1.  **Lightweight & Zero Dependency**: Unlike `jsonpath-ng` which relies on complex AST parsing frameworks like `ply`, `jsonpath-python` is implemented with pure Python string parsing. It has **zero third-party dependencies**, making it incredibly easy to integrate into any environment.
+2.  **Simple & Pythonic**: The implementation is straightforward and linear. If you encounter a bug or need to extend it, the code is easy to read and modify. You can even copy the core file directly into your project as a utility.
+3.  **Powerful Features**: It supports advanced features like **sorting**, **filtering**, and **updating** JSON data. If you require strict adherence to the JSONPath standard (RFC 9535), other libraries might be more suitable, but for practical data manipulation, this library offers more power.
 
 ## Features
 
 - [x] **Light. (No need to install third-party dependencies.)**
 - [x] **Support filter operator, including multi-selection, inverse-selection filtering.**
 - [x] **Support sorter operator, including sorting by multiple fields, ascending and descending order.**
+- [x] **Support updating JSON data using JSONPath expressions.**
 - [x] Support basic semantics of JSONPath.
 - [x] Support output modes: VALUE, PATH.
-- [ ] Support embedded syntax.
-- [ ] Support user-defined function.
-- [ ] Support parent operator.
+- [x] Support regex filter (`=~`).
 
 ## Installation
 
@@ -141,6 +134,8 @@ Support all python comparison operators (`==`, `!=`, `<`, `>`, `>=`, `<=`), pyth
 ['Moby Dick']
 >>> JSONPath('$.book[?(@.author=="Herman Melville" or @.author=="Evelyn Waugh")].author').parse(data)
 ['Evelyn Waugh', 'Herman Melville']
+>>> JSONPath('$.book[?(@.title =~ /.*Century/)]').parse(data)
+[{'category': 'reference', 'author': 'Nigel Rees', 'title': 'Sayings of the Century', 'price': 8.95, 'brand': {'version': 'v1.0.0'}}]
 ```
 
 `Note`: You must use double quote(`""`) instead of single quote(`''`) to wrap the compared string, because single quote(`''`) has another usage in this JSONPath syntax .
@@ -171,6 +166,20 @@ Using `(field1,field2,…,filedn)` after a dict object to extract its fields.
 [{'score': 60}, {'score': 85}, {'score': 90}, {'score': 95}, {'score': 100}]
 >>> JSONPath("$.book[/(category,price)].(title,price)").parse(data)
 [{'title': 'Moby Dick', 'price': 8.99}, {'title': 'Sword of Honour', 'price': 12.99}, {'title': 'The Lord of the Rings', 'price': 22.99}, {'title': 'Sayings of the Century', 'price': 8.95}]
+```
+
+#### Update Data
+
+Update values in the JSON object using the `update` method.
+
+```python
+# Update with a static value
+>>> JSONPath("$.book[*].price").update(data, 100)
+# Result: All book prices are set to 100
+
+# Update with a function (e.g., apply a discount)
+>>> JSONPath("$.book[*].price").update(data, lambda x: x * 0.9)
+# Result: All book prices are multiplied by 0.9
 ```
 
 ### Appendix: Example JSON data:
@@ -246,9 +255,3 @@ data = {
     }
 }
 ```
-
-## Todo List
-
-- Syntax and character set (refer to k8s)
-
-> The name segment is required and must be 63 characters or less, beginning and ending with an alphanumeric character (`[a-z0-9A-Z]`) with dashes (`-`), underscores (`_`), dots (`.`), and alphanumerics between.

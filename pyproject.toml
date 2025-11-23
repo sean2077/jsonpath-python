@@ -93,7 +93,10 @@ cmd = "pytest"
 help = "Run tests"
 
 [tool.poe.tasks.test-perf]
-cmd = "pytest -m perf -v --benchmark-autosave --benchmark-histogram"
+sequence = [
+  { cmd = "pytest -m perf -v --benchmark-autosave --benchmark-histogram" },
+  { script = "scripts.rename_benchmark:main" },
+]
 help = "Run performance tests"
 
 [tool.poe.tasks.update-deps]

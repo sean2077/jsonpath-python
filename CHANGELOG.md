@@ -1,3 +1,9 @@
+## [1.1.1](https://github.com/sean2077/jsonpath-python/compare/1.1.0...1.1.1) (2025-11-23)
+
+### Performance Improvements
+
+* optimize regex compilation and add performance test suite ([61152d7](https://github.com/sean2077/jsonpath-python/commit/61152d74e7dfb7236f21e1690e8e96cfc40c05e0))
+
 ## [1.1.0](https://github.com/sean2077/jsonpath-python/compare/v1.0.5...1.1.0) (2025-11-23)
 
 ### Fixes

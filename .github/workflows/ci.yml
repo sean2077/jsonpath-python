@@ -73,37 +73,3 @@ jobs:
           name: coverage-report
           path: htmlcov/
           retention-days: 30
-
-  benchmark:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "latest"
-
-      - name: Install dependencies
-        run: uv sync --extra dev
-
-      - name: Run performance tests
-        run: uv run pytest tests/test_performance.py -v --benchmark-only --benchmark-json=benchmark.json
-
-      - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          tool: "pytest"
-          output-file-path: benchmark.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: ${{ github.ref == 'refs/heads/main' }}
-          comment-on-alert: true
-          fail-on-alert: false
-          alert-threshold: "150%"
-          comment-always: false

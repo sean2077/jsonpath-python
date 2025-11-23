@@ -3,6 +3,7 @@
 /.serena/
 /cohn_credentials.json
 /.benchmarks
+/benchmark_*.svg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -28,7 +28,13 @@ requires-python = ">=3.8"
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.3"]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "pytest-benchmark[histogram]>=4.0",
+  "ruff>=0.3",
+  "poethepoet",
+]
 
 [project.urls]
 Homepage = "https://github.com/sean2077/jsonpath-python"
@@ -69,6 +75,10 @@ ignore = [
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
+markers = [
+  "perf: marks tests as performance benchmarks (deselect with '-m \"not perf\"')",
+  "slow: marks tests as slow running (deselect with '-m \"not slow\"')",
+]
 # Development Tasks (using poethepoet)
 [tool.poe.tasks.format]
 cmd = "ruff format . && ruff check . --fix --select I"
@@ -81,6 +91,10 @@ help = "Run linter"
 [tool.poe.tasks.test]
 cmd = "pytest"
 help = "Run tests"
+
+[tool.poe.tasks.test-perf]
+cmd = "pytest -m perf -v --benchmark-autosave --benchmark-histogram"
+help = "Run performance tests"
 
 [tool.poe.tasks.update-deps]
 cmd = "uv sync --all-extras --upgrade --index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"

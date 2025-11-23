@@ -1,5 +1,11 @@
 # jsonpath-python
 
+[![CI](https://github.com/sean2077/jsonpath-python/workflows/CI/badge.svg)](https://github.com/sean2077/jsonpath-python/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/sean2077/jsonpath-python/branch/main/graph/badge.svg)](https://codecov.io/gh/sean2077/jsonpath-python)
+[![PyPI version](https://badge.fury.io/py/jsonpath-python.svg)](https://badge.fury.io/py/jsonpath-python)
+[![Python versions](https://img.shields.io/pypi/pyversions/jsonpath-python.svg)](https://pypi.org/project/jsonpath-python/)
+[![License](https://img.shields.io/github/license/sean2077/jsonpath-python.svg)](https://github.com/sean2077/jsonpath-python/blob/main/LICENSE)
+
 A lightweight and powerful JSONPath implementation for Python.
 
 ## Why jsonpath-python?

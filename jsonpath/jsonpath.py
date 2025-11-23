@@ -1,13 +1,17 @@
 import logging
 import os
 import re
-import sys
 from collections import defaultdict
 from typing import Any, Callable, Union
 
 
 def create_logger(name: str = None, level: Union[int, str] = logging.INFO):
     """Get or create a logger used for local debug."""
+    logger = logging.getLogger(name)
+
+    # Avoid adding duplicate handlers
+    if logger.handlers:
+        return logger
 
     formater = logging.Formatter(f"%(asctime)s-%(levelname)s-[{name}] %(message)s", datefmt="[%Y-%m-%d %H:%M:%S]")
 
@@ -15,7 +19,6 @@ def create_logger(name: str = None, level: Union[int, str] = logging.INFO):
     handler.setLevel(level)
     handler.setFormatter(formater)
 
-    logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.addHandler(handler)
 
@@ -60,23 +63,22 @@ class JSONPath:
     REP_SELECT_CONTENT = re.compile(r"^([\w.']+)(, ?[\w.']+)+$")
     REP_FILTER_CONTENT = re.compile(r"@([.\[].*?)(?=<=|>=|==|!=|>|<| in| not| is|\s|\)|$)|len\(@([.\[].*?)\)")
     REP_PATH_SEGMENT = re.compile(r"(?:\.|^)(?P<dot>\w+)|\[['\"](?P<quote>.*?)['\"]\]|\[(?P<int>\d+)\]")
-
-    # annotations
-    f: list
-    segments: list
-    lpath: int
-    subx = defaultdict(list)
-    result: list
-    result_type: str
-    eval_func: callable
+    REP_WORD_KEY = re.compile(r"^\w+$")
+    REP_REGEX_PATTERN = re.compile(r"=~\s*/(.*?)/")
 
     def __init__(self, expr: str):
+        # Initialize instance variables
+        self.subx = defaultdict(list)
+        self.segments = []
+        self.lpath = 0
+        self.result = []
+        self.result_type = "VALUE"
+        self.eval_func = eval
+
         expr = self._parse_expr(expr)
         self.segments = [s for s in expr.split(JSONPath.SEP) if s]
         self.lpath = len(self.segments)
         logger.debug(f"segments  : {self.segments}")
-
-        self.caller_globals = sys._getframe(1).f_globals
 
     def parse(self, obj, result_type="VALUE", eval_func=eval):
         if not isinstance(obj, (list, dict)):
@@ -87,6 +89,7 @@ class JSONPath:
         self.result_type = result_type
         self.eval_func = eval_func
 
+        # Reset state for each parse call
         self.result = []
         self._trace(obj, 0, "$")
 
@@ -172,13 +175,13 @@ class JSONPath:
                 f(v, i, f"{path}[{idx}]", *args)
         elif isinstance(obj, dict):
             for k, v in obj.items():
-                if re.match(r"^\w+$", k):
+                if JSONPath.REP_WORD_KEY.match(k):
                     f(v, i, f"{path}.{k}", *args)
                 else:
                     f(v, i, f"{path}['{k}']", *args)
 
     @staticmethod
-    def _getattr(obj: dict, path: str, *, convert_number_str=False):
+    def _getattr(obj: Any, path: str, *, convert_number_str=False):
         r = obj
         for k in path.split("."):
             if isinstance(r, dict):
@@ -268,7 +271,7 @@ class JSONPath:
             step_key = step[1:-1]
 
         if isinstance(obj, dict) and step_key in obj:
-            if re.match(r"^\w+$", step_key):
+            if JSONPath.REP_WORD_KEY.match(step_key):
                 self._trace(obj[step_key], i + 1, f"{path}.{step_key}")
             else:
                 self._trace(obj[step_key], i + 1, f"{path}['{step_key}']")
@@ -285,8 +288,9 @@ class JSONPath:
         # select
         if isinstance(obj, dict) and JSONPath.REP_SELECT_CONTENT.fullmatch(step):
             for k in step.split(","):
+                k = k.strip()  # Remove whitespace
                 if k in obj:
-                    if re.match(r"^\w+$", k):
+                    if JSONPath.REP_WORD_KEY.match(k):
                         self._trace(obj[k], i + 1, f"{path}.{k}")
                     else:
                         self._trace(obj[k], i + 1, f"{path}['{k}']")
@@ -298,7 +302,7 @@ class JSONPath:
             step = JSONPath.REP_FILTER_CONTENT.sub(self._gen_obj, step)
 
             if "=~" in step:
-                step = re.sub(r"=~\s*/(.*?)/", r"@ RegexPattern(r'\1')", step)
+                step = JSONPath.REP_REGEX_PATTERN.sub(r"@ RegexPattern(r'\1')", step)
 
             if isinstance(obj, dict):
                 self._filter(obj, i + 1, path, step)
@@ -316,7 +320,7 @@ class JSONPath:
                 obj = list(obj.items())
                 self._sorter(obj, step[2:-1])
                 for k, v in obj:
-                    if re.match(r"^\w+$", k):
+                    if JSONPath.REP_WORD_KEY.match(k):
                         self._trace(v, i + 1, f"{path}.{k}")
                     else:
                         self._trace(v, i + 1, f"{path}['{k}']")
@@ -329,6 +333,7 @@ class JSONPath:
             if isinstance(obj, dict):
                 obj_ = {}
                 for k in step[1:-1].split(","):
+                    k = k.strip()  # Remove whitespace
                     v = self._getattr(obj, k)
                     if v is not JSONPath._MISSING:
                         obj_[k] = v
@@ -339,15 +344,25 @@ class JSONPath:
             return
 
     def update(self, obj: Union[list, dict], value_or_func: Union[Any, Callable[[Any], Any]]) -> Any:
+        """Update values in JSON object using JSONPath expression.
+
+        Args:
+            obj: JSON object (dict or list) to update
+            value_or_func: Static value or callable that transforms the current value
+
+        Returns:
+            Updated object (modified in-place for nested paths, returns new value for root)
+        """
         paths = self.parse(obj, result_type="PATH")
+        is_func = callable(value_or_func)
+
+        # Handle root object update specially
+        if len(paths) == 1 and paths[0] == "$":
+            return value_or_func(obj) if is_func else value_or_func
+
         for path in paths:
             matches = list(JSONPath.REP_PATH_SEGMENT.finditer(path))
             if not matches:
-                # Root object
-                if isinstance(value_or_func, Callable):
-                    obj = value_or_func(obj)
-                else:
-                    obj = value_or_func
                 continue
 
             target = obj
@@ -371,10 +386,7 @@ class JSONPath:
             elif group["int"]:
                 key = int(group["int"])
 
-            if isinstance(value_or_func, Callable):
-                target[key] = value_or_func(target[key])
-            else:
-                target[key] = value_or_func
+            target[key] = value_or_func(target[key]) if is_func else value_or_func
 
         return obj
 
@@ -393,12 +405,24 @@ def compile(expr):
     return JSONPath(expr)
 
 
-# global cache
+# global cache with size limit to prevent memory leaks
 _jsonpath_cache = {}
+_CACHE_MAX_SIZE = 128
 
 
 def search(expr, data):
-    global _jsonpath_cache
+    """Search JSON data using JSONPath expression with instance caching.
+
+    Args:
+        expr: JSONPath expression string
+        data: JSON data (dict or list)
+
+    Returns:
+        List of matched values
+    """
     if expr not in _jsonpath_cache:
+        # Simple LRU: clear cache when it grows too large
+        if len(_jsonpath_cache) >= _CACHE_MAX_SIZE:
+            _jsonpath_cache.clear()
         _jsonpath_cache[expr] = JSONPath(expr)
     return _jsonpath_cache[expr].parse(data)

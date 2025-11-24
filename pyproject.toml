@@ -92,12 +92,16 @@ help = "Run linter"
 cmd = "pytest"
 help = "Run tests"
 
-[tool.poe.tasks.test-perf]
+[tool.poe.tasks.perf]
 sequence = [
-  { cmd = "pytest -m perf -v --benchmark-autosave --benchmark-histogram" },
+  { cmd = "pytest tests/test_performance.py --benchmark-only --benchmark-autosave --benchmark-histogram --benchmark-compare" },
   { script = "scripts.rename_benchmark:main" },
 ]
-help = "Run performance tests"
+help = "Run performance tests, save to benchmarks/ with version+hash, and compare with last run"
+
+[tool.poe.tasks.perf-list]
+cmd = "pytest-benchmark list"
+help = "List all saved benchmarks"
 
 [tool.poe.tasks.update-deps]
 cmd = "uv sync --all-extras --upgrade --index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"

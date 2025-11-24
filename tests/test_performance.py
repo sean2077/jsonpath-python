@@ -71,9 +71,19 @@ class TestPerformance:
         jp = JSONPath("$.book[1:3]")
         benchmark(jp.parse, small_data)
 
-    def test_sorter_operation(self, small_data, benchmark):
-        """Benchmark sorter operation."""
+    def test_sorter_single_field(self, small_data, benchmark):
+        """Benchmark single field sorter operation."""
         jp = JSONPath("$.book[/(price)].title")
+        benchmark(jp.parse, small_data)
+
+    def test_sorter_multi_field_same_direction(self, small_data, benchmark):
+        """Benchmark multi-field sorter with same direction."""
+        jp = JSONPath("$.book[/(price, title)]")
+        benchmark(jp.parse, small_data)
+
+    def test_sorter_multi_field_mixed_direction(self, small_data, benchmark):
+        """Benchmark multi-field sorter with mixed directions."""
+        jp = JSONPath("$.book[/(price, ~title)]")
         benchmark(jp.parse, small_data)
 
     def test_field_extractor(self, small_data, benchmark):
@@ -105,6 +115,21 @@ class TestPerformance:
             return jp.update(data, lambda x: x * 0.9)
 
         benchmark(update_func)
+
+    def test_regex_filter(self, small_data, benchmark):
+        """Benchmark regex pattern matching in filters."""
+        jp = JSONPath("$.book[?(@.title =~ /^Sword/)].price")
+        benchmark(jp.parse, small_data)
+
+    def test_nested_filter(self, small_data, benchmark):
+        """Benchmark nested filter expressions."""
+        jp = JSONPath("$.book[?(@.price < 10 and @.category == 'fiction')]")
+        benchmark(jp.parse, small_data)
+
+    def test_path_result_type(self, small_data, benchmark):
+        """Benchmark returning paths instead of values."""
+        jp = JSONPath("$..price")
+        benchmark(jp.parse, small_data, "PATH")
 
 
 @pytest.mark.perf

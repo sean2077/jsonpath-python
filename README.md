@@ -53,6 +53,8 @@ The JSONPath syntax in this project borrows from [JSONPath - XPath for JSON](htt
 | `?()`            | applies a filter expression                                                  |
 | `/()`            | applies a sorter expression                                                  |
 | `()`             | applies a field-extractor expression                                         |
+| `=~`             | regex match operator (used in filter expressions)                            |
+| `in`             | membership test operator (used in filter expressions)                        |
 
 ### Examples
 
@@ -144,7 +146,21 @@ Support all python comparison operators (`==`, `!=`, `<`, `>`, `>=`, `<=`), pyth
 [{'category': 'reference', 'author': 'Nigel Rees', 'title': 'Sayings of the Century', 'price': 8.95, 'brand': {'version': 'v1.0.0'}}]
 ```
 
-`Note`: You must use double quote(`""`) instead of single quote(`''`) to wrap the compared string, because single quote(`''`) has another usage in this JSONPath syntax .
+The `in` operator can be used to check membership in lists or substrings in strings:
+
+```python
+# Check if a value exists in a list
+>>> data = {"items": [{"tags": ["fruit", "red"]}, {"tags": ["vegetable"]}]}
+>>> JSONPath("$.items[?('fruit' in @.tags)]").parse(data)
+[{'tags': ['fruit', 'red']}]
+
+# Check if a substring exists in a string
+>>> data = {"items": [{"name": "apple"}, {"name": "banana"}]}
+>>> JSONPath("$.items[?('app' in @.name)].name").parse(data)
+['apple']
+```
+
+`Note`: You must use double quote(`""`) instead of single quote(`''`) to wrap the compared string, because single quote(`''`) has another usage in this JSONPath syntax.
 
 #### Sorter Expression
 
@@ -187,6 +203,32 @@ Update values in the JSON object using the `update` method.
 >>> JSONPath("$.book[*].price").update(data, lambda x: x * 0.9)
 # Result: All book prices are multiplied by 0.9
 ```
+
+## API Reference
+
+### Functions
+
+- **`search(expr, data)`**: Search JSON data using a JSONPath expression. This function uses LRU caching internally for better performance when the same expression is used multiple times.
+
+```python
+>>> from jsonpath import search
+>>> search("$..price", data)
+[8.95, 12.99, 8.99, 22.99, 19.95]
+```
+
+- **`compile(expr)`**: Pre-compile a JSONPath expression for reuse. Equivalent to `JSONPath(expr)`.
+
+```python
+>>> from jsonpath import compile
+>>> jp = compile("$.book[*].title")
+>>> jp.parse(data)
+['Sayings of the Century', 'Sword of Honour', 'Moby Dick', 'The Lord of the Rings']
+```
+
+### Exceptions
+
+- **`ExprSyntaxError`**: Raised when a JSONPath expression has invalid syntax (e.g., using sorter on non-collection types).
+- **`JSONPathTypeError`**: Raised when type-related errors occur (e.g., comparing incompatible types during sorting).
 
 ### Appendix: Example JSON data:
 

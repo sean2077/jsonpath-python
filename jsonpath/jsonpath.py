@@ -212,7 +212,8 @@ class JSONPath:
         """
         if isinstance(key, int):
             return f"{path}[{key}]"
-        if JSONPath.REP_WORD_KEY.match(key):
+        # Fast check: if all chars are word chars (alphanumeric + underscore)
+        if key.isidentifier() or (key and key.replace("_", "a").isalnum()):
             return f"{path}.{key}"
         return f"{path}['{key}']"
 

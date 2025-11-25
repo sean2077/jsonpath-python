@@ -31,11 +31,11 @@ def create_logger(name: str = None, level: Union[int, str] = logging.INFO):
     if logger.handlers:
         return logger
 
-    formater = logging.Formatter(f"%(asctime)s-%(levelname)s-[{name}] %(message)s", datefmt="[%Y-%m-%d %H:%M:%S]")
+    formatter = logging.Formatter(f"%(asctime)s-%(levelname)s-[{name}] %(message)s", datefmt="[%Y-%m-%d %H:%M:%S]")
 
     handler = logging.StreamHandler()
     handler.setLevel(level)
-    handler.setFormatter(formater)
+    handler.setFormatter(formatter)
 
     logger.setLevel(level)
     logger.addHandler(handler)
@@ -108,7 +108,6 @@ class JSONPath:
     REP_SELECT_CONTENT = re.compile(r"^([\w.']+)(, ?[\w.']+)+$")
     REP_FILTER_CONTENT = re.compile(r"@([.\[].*?)(?=<=|>=|==|!=|>|<| in| not| is|\s|\)|$)|len\(@([.\[].*?)\)")
     REP_PATH_SEGMENT = re.compile(r"(?:\.|^)(?P<dot>\w+)|\[['\"](?P<quote>.*?)['\"]\]|\[(?P<int>\d+)\]")
-    REP_WORD_KEY = re.compile(r"^\w+$")
     REP_REGEX_PATTERN = re.compile(r"=~\s*/(.*?)/")
     REP_ATTR_PATH = re.compile(r"\.(\w+|'[^']*'|\"[^\"]*\")")
     REP_DOTDOT_BRACKET = re.compile(r"\.(\.#B)")

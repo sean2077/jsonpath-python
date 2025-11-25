@@ -1,3 +1,9 @@
+## [1.1.3](https://github.com/sean2077/jsonpath-python/compare/1.1.2...1.1.3) (2025-11-25)
+
+### Performance Improvements
+
+* use isidentifier() instead of regex in _build_path ([3054ca4](https://github.com/sean2077/jsonpath-python/commit/3054ca4e700be031c2d68afcdeed0de6ddc34aad))
+
 ## [1.1.2](https://github.com/sean2077/jsonpath-python/compare/1.1.1...1.1.2) (2025-11-25)
 
 ### Performance Improvements

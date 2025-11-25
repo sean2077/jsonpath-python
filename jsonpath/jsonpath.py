@@ -1,3 +1,21 @@
+"""JSONPath implementation for Python.
+
+This module provides a lightweight JSONPath implementation with support for:
+- Standard JSONPath operators ($, @, ., .., *, [])
+- Filter expressions with comparison, membership, and regex operators
+- Sorter expressions for ordering results
+- Field extractor expressions
+- Value updates via JSONPath
+
+Example:
+    >>> from jsonpath import JSONPath, search
+    >>> data = {"store": {"book": [{"price": 10}, {"price": 20}]}}
+    >>> JSONPath("$..price").parse(data)
+    [10, 20]
+    >>> search("$.store.book[0].price", data)
+    [10]
+"""
+
 import logging
 import os
 import re
@@ -29,14 +47,39 @@ logger = create_logger("jsonpath", os.getenv("PYLOGLEVEL", "INFO"))
 
 
 class ExprSyntaxError(Exception):
-    pass
+    """Raised when a JSONPath expression has invalid syntax.
+
+    Examples of invalid syntax:
+    - Using sorter on non-collection types
+    - Using field-extractor on non-dict types
+    """
 
 
 class JSONPathTypeError(Exception):
-    pass
+    """Raised when type-related errors occur during JSONPath operations.
+
+    Examples:
+    - Comparing incompatible types during sorting (e.g., str vs int)
+    - Sorting with missing keys that result in None comparisons
+    """
 
 
 class JSONPath:
+    """JSONPath expression parser and evaluator.
+
+    A JSONPath expression is used to navigate and extract data from JSON objects.
+    This implementation supports extended syntax including filters, sorters, and
+    field extractors.
+
+    Attributes:
+        RESULT_TYPE: Supported result types ('VALUE' or 'PATH').
+
+    Example:
+        >>> jp = JSONPath("$.store.book[?(@.price < 10)].title")
+        >>> jp.parse({"store": {"book": [{"title": "A", "price": 5}]}})
+        ['A']
+    """
+
     RESULT_TYPE = {
         "VALUE": "A list of specific values.",
         "PATH": "All path of specific values.",
@@ -71,6 +114,11 @@ class JSONPath:
     REP_DOTDOT_BRACKET = re.compile(r"\.(\.#B)")
 
     def __init__(self, expr: str):
+        """Initialize JSONPath with an expression.
+
+        Args:
+            expr: JSONPath expression string (e.g., "$.store.book[*].price")
+        """
         # Initialize instance variables
         self.subx = defaultdict(list)
         self.segments = []
@@ -86,6 +134,22 @@ class JSONPath:
             logger.debug(f"segments  : {self.segments}")
 
     def parse(self, obj, result_type="VALUE", eval_func=eval):
+        """Parse JSON object using the JSONPath expression.
+
+        Args:
+            obj: JSON object (dict or list) to parse
+            result_type: Type of result to return
+                - 'VALUE': Return matched values (default)
+                - 'PATH': Return JSONPath strings of matched locations
+            eval_func: Custom eval function for filter expressions (default: builtin eval)
+
+        Returns:
+            List of matched values or paths depending on result_type
+
+        Raises:
+            TypeError: If obj is not a dict or list
+            ValueError: If result_type is invalid
+        """
         if not isinstance(obj, (list, dict)):
             raise TypeError("obj must be a list or a dict.")
 
@@ -101,9 +165,15 @@ class JSONPath:
         return self.result
 
     def search(self, obj, result_type="VALUE"):
+        """Alias for parse(). Search JSON object using the JSONPath expression."""
         return self.parse(obj, result_type)
 
     def _parse_expr(self, expr):
+        """Parse and normalize JSONPath expression into segments.
+
+        Handles special patterns (quotes, brackets, parentheses) by temporarily
+        replacing them with placeholders, then splits by dots and restores.
+        """
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"before expr : {expr}")
         # pick up special patterns
@@ -237,6 +307,15 @@ class JSONPath:
 
     @staticmethod
     def _traverse(f, obj, i: int, path: str, *args):
+        """Traverse object children and apply function to each.
+
+        Args:
+            f: Function to apply to each child element
+            obj: Object to traverse (list or dict)
+            i: Current segment index
+            path: Current JSONPath string
+            *args: Additional arguments to pass to function f
+        """
         if isinstance(obj, list):
             for idx, v in enumerate(obj):
                 f(v, i, JSONPath._build_path(path, idx), *args)
@@ -246,6 +325,16 @@ class JSONPath:
 
     @staticmethod
     def _getattr(obj: Any, path: str, *, convert_number_str=False):
+        """Get attribute value from object by dot-notation path.
+
+        Args:
+            obj: Source object (dict)
+            path: Dot-separated path string (e.g., "author.name")
+            convert_number_str: If True, convert numeric strings to int/float
+
+        Returns:
+            The value at the path, or _MISSING sentinel if not found
+        """
         # Fast path for single key (most common case)
         if "." not in path:
             if isinstance(obj, dict) and path in obj:
@@ -295,6 +384,14 @@ class JSONPath:
             raise JSONPathTypeError(f"not possible to compare str and int when sorting: {e}") from e
 
     def _filter(self, obj, i: int, path: str, step: str):
+        """Evaluate filter expression and continue trace if condition is true.
+
+        Args:
+            obj: Current object to evaluate against filter
+            i: Next segment index to trace
+            path: Current JSONPath string
+            step: Python expression string to evaluate
+        """
         r = False
         try:
             r = self.eval_func(step, None, {"__obj": obj, "RegexPattern": RegexPattern})
@@ -304,11 +401,15 @@ class JSONPath:
             self._trace(obj, i, path)
 
     def _trace(self, obj, i: int, path):
-        """Perform operation on object.
+        """Recursively traverse object following JSONPath segments.
+
+        This is the core evaluation method that processes each segment of the
+        parsed JSONPath expression and navigates through the object accordingly.
 
         Args:
-            obj ([type]): current operating object
-            i (int): current operation specified by index in self.segments
+            obj: Current object being traversed
+            i: Index of current segment in self.segments
+            path: JSONPath string representing current location
         """
 
         # store
@@ -446,17 +547,43 @@ class JSONPath:
 
 
 class RegexPattern:
+    """Regex pattern wrapper for use with the =~ operator in filter expressions.
+
+    This class enables regex matching syntax like: @.name =~ /pattern/
+    The @ operator is overloaded to perform the regex search.
+
+    Example:
+        >>> pattern = RegexPattern(r"^test")
+        >>> "testing" @ pattern
+        True
+    """
+
     def __init__(self, pattern):
+        """Initialize with a regex pattern string."""
         self.pattern = pattern
         self._compiled = re.compile(pattern)  # Pre-compile for better performance
 
     def __rmatmul__(self, other):
+        """Right matmul operator (@) - checks if other matches the pattern."""
         if isinstance(other, str):
             return bool(self._compiled.search(other))
         return False
 
 
 def compile(expr):
+    """Compile a JSONPath expression for reuse.
+
+    Args:
+        expr: JSONPath expression string
+
+    Returns:
+        JSONPath object that can be used to parse multiple JSON objects
+
+    Example:
+        >>> jp = compile("$.store.book[*].price")
+        >>> jp.parse(data1)
+        >>> jp.parse(data2)
+    """
     return JSONPath(expr)
 
 

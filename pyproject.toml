@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jsonpath-python"
-version = "1.1.1"
+version = "1.1.2"
 description = "A more powerful JSONPath implementation in modern python"
 readme = "README.md"
 license = { file = "LICENSE" }

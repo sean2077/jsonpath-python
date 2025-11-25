@@ -1,3 +1,9 @@
+## [1.1.2](https://github.com/sean2077/jsonpath-python/compare/1.1.1...1.1.2) (2025-11-25)
+
+### Performance Improvements
+
+* pre-compile regex and refactor code structure ([70b0103](https://github.com/sean2077/jsonpath-python/commit/70b0103c2c261a7a26c75c6c05f9ac008e65eec2))
+
 ## [1.1.1](https://github.com/sean2077/jsonpath-python/compare/1.1.0...1.1.1) (2025-11-23)
 
 ### Performance Improvements

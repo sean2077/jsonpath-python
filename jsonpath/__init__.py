@@ -2,7 +2,7 @@
 JSONPath
 ========
 
-A more powerful JSONPath implementation in modern python.
+A lightweight and powerful JSONPath implementation for Python.
 """
 
 from importlib.metadata import version

@@ -12,13 +12,6 @@ from jsonpath import JSONPath, search
 
 
 @pytest.fixture(scope="module")
-def large_data():
-    """Load large test data for performance testing."""
-    with open("tests/data/1.json") as f:
-        return json.load(f)
-
-
-@pytest.fixture(scope="module")
 def small_data():
     """Load small test data for performance testing."""
     with open("tests/data/2.json") as f:

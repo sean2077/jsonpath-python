@@ -1,3 +1,9 @@
+## [1.1.4](https://github.com/sean2077/jsonpath-python/compare/1.1.3...1.1.4) (2025-11-25)
+
+### Fixes
+
+* **docs:** sync description with README ([190ffce](https://github.com/sean2077/jsonpath-python/commit/190ffced600b59897e624b281d6310278bf6f822))
+
 ## [1.1.3](https://github.com/sean2077/jsonpath-python/compare/1.1.2...1.1.3) (2025-11-25)
 
 ### Performance Improvements

@@ -5,7 +5,9 @@ JSONPath
 A more powerful JSONPath implementation in modern python.
 """
 
-__version__ = "1.1.1"
+from importlib.metadata import version
+
+__version__ = version("jsonpath-python")
 
 from .jsonpath import ExprSyntaxError, JSONPath, JSONPathTypeError, compile, search
 

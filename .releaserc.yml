@@ -19,14 +19,11 @@ plugins:
   - - "@semantic-release/changelog"
     - changelogFile: CHANGELOG.md
   - - "@semantic-release/exec"
-    - prepareCmd: |
-        python -c "import re; content = open('jsonpath/__init__.py').read(); open('jsonpath/__init__.py', 'w').write(re.sub(r'__version__ = \".*?\"', '__version__ = \"${nextRelease.version}\"', content))"
-        uv version "${nextRelease.version}"
+    - prepareCmd: uv version "${nextRelease.version}"
       publishCmd: uv build
   - - "@semantic-release/git"
     - assets:
         - CHANGELOG.md
-        - jsonpath/__init__.py
         - pyproject.toml
         - uv.lock
       message: |-

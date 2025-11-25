@@ -23,7 +23,7 @@ repos:
       - id: ruff-check
         args: ["--fix"]
         types_or: [python, pyi]
-        exclude: ^(vendor/|scripts/)
+        exclude: ^(vendor/)
       # Run ruff formatter
       - id: ruff-format
         types_or: [python, pyi]

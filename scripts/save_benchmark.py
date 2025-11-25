@@ -1,4 +1,4 @@
-"""Move and rename benchmark files to benchmarks/ directory with version suffix."""
+"""Save benchmark results to benchmarks/ directory with version suffix."""
 
 import glob
 import shutil
@@ -8,15 +8,15 @@ from jsonpath import __version__
 
 
 def main(suffix=None):
-    """Move benchmark files to benchmarks/ with version suffix.
+    """Save benchmark files to benchmarks/ with version suffix.
 
     Args:
         suffix: Custom suffix (default: version number without 'v' prefix)
 
     Usage:
-        python scripts/rename_benchmark.py              # Uses version (e.g., 1.1.1)
-        python scripts/rename_benchmark.py baseline     # Uses custom suffix
-        python scripts/rename_benchmark.py v1.1.1-opt   # Uses custom suffix with 'v'
+        python scripts/save_benchmark.py              # Uses version (e.g., 1.1.1)
+        python scripts/save_benchmark.py baseline     # Uses custom suffix
+        python scripts/save_benchmark.py v1.1.1-opt   # Uses custom suffix with 'v'
     """
     version = __version__
 
@@ -30,7 +30,7 @@ def main(suffix=None):
     for json_file in glob.glob(".benchmarks/**/*.json", recursive=True):
         json_path = Path(json_file)
         if json_path.is_file():
-            new_name = f"benchmark-{file_suffix}.json"
+            new_name = f"jsonpath-python-{file_suffix}.json"
             target = benchmarks_dir / new_name
             shutil.copy2(json_path, target)
             print(f"Copied {json_file} -> {target}")
@@ -38,7 +38,7 @@ def main(suffix=None):
     # Move and rename SVG files
     for svg in glob.glob("benchmark_*.svg"):
         svg_path = Path(svg)
-        new_name = f"benchmark-{file_suffix}.svg"
+        new_name = f"jsonpath-python-{file_suffix}.svg"
         target = benchmarks_dir / new_name
         shutil.move(svg_path, target)
         print(f"Moved {svg} -> {target}")

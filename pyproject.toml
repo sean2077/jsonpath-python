@@ -95,9 +95,21 @@ help = "Run tests"
 [tool.poe.tasks.perf]
 sequence = [
   { cmd = "pytest tests/test_performance.py --benchmark-only --benchmark-autosave --benchmark-histogram --benchmark-compare" },
-  { script = "scripts.rename_benchmark:main" },
+  { cmd = "python scripts/save_benchmark.py latest" },
+  { cmd = "python scripts/compare_benchmarks.py" },
 ]
-help = "Run performance tests, save to benchmarks/ with version+hash, and compare with last run"
+help = "Run performance tests, save to benchmarks/ with latest suffix"
+
+[tool.poe.tasks.perf-version]
+sequence = [
+  { cmd = "pytest tests/test_performance.py --benchmark-only --benchmark-autosave --benchmark-histogram --benchmark-compare" },
+  { cmd = "python scripts/save_benchmark.py" },
+]
+help = "Run performance tests, save to benchmarks/ with version suffix"
+
+[tool.poe.tasks.perf-compare]
+cmd = "python scripts/compare_benchmarks.py"
+help = "Compare benchmark-latest.json with newest version benchmark"
 
 [tool.poe.tasks.perf-list]
 cmd = "pytest-benchmark list"

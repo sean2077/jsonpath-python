@@ -4,6 +4,7 @@
 /cohn_credentials.json
 /.benchmarks
 /benchmark_*.svg
+/benchmarks
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -570,8 +570,35 @@ class RegexPattern:
         return False
 
 
+# Global cache with LRU eviction to prevent memory leaks
+_jsonpath_cache = OrderedDict()
+_CACHE_MAX_SIZE = 128
+
+
+def _get_cached_jsonpath(expr: str) -> JSONPath:
+    """Get or create a cached JSONPath instance.
+
+    Args:
+        expr: JSONPath expression string
+
+    Returns:
+        Cached or newly created JSONPath instance
+    """
+    if expr in _jsonpath_cache:
+        # Move to end (mark as recently used)
+        _jsonpath_cache.move_to_end(expr)
+    else:
+        # Evict oldest if cache is full
+        if len(_jsonpath_cache) >= _CACHE_MAX_SIZE:
+            _jsonpath_cache.popitem(last=False)  # Remove oldest (FIFO)
+        _jsonpath_cache[expr] = JSONPath(expr)
+    return _jsonpath_cache[expr]
+
+
 def compile(expr):
     """Compile a JSONPath expression for reuse.
+
+    Returns a cached JSONPath instance when available, avoiding redundant parsing.
 
     Args:
         expr: JSONPath expression string
@@ -584,16 +611,11 @@ def compile(expr):
         >>> jp.parse(data1)
         >>> jp.parse(data2)
     """
-    return JSONPath(expr)
-
-
-# global cache with LRU eviction to prevent memory leaks
-_jsonpath_cache = OrderedDict()
-_CACHE_MAX_SIZE = 128
+    return _get_cached_jsonpath(expr)
 
 
 def search(expr, data):
-    """Search JSON data using JSONPath expression with LRU caching.
+    """Search JSON data using JSONPath expression with caching.
 
     Args:
         expr: JSONPath expression string
@@ -602,12 +624,4 @@ def search(expr, data):
     Returns:
         List of matched values
     """
-    if expr in _jsonpath_cache:
-        # Move to end (mark as recently used)
-        _jsonpath_cache.move_to_end(expr)
-    else:
-        # Evict oldest if cache is full
-        if len(_jsonpath_cache) >= _CACHE_MAX_SIZE:
-            _jsonpath_cache.popitem(last=False)  # Remove oldest (FIFO)
-        _jsonpath_cache[expr] = JSONPath(expr)
-    return _jsonpath_cache[expr].parse(data)
+    return _get_cached_jsonpath(expr).parse(data)

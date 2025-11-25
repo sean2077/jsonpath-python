@@ -387,3 +387,98 @@ class TestCustomEval:
         result = jp.parse(data, eval_func=custom_eval)
         assert len(result) == 2
         assert len(eval_calls) > 0
+
+
+class TestSliceAdvanced:
+    """Test advanced slice operations."""
+
+    def test_slice_reverse(self):
+        data = {"items": [0, 1, 2, 3, 4]}
+        assert JSONPath("$.items[::-1]").parse(data) == [4, 3, 2, 1, 0]
+
+    def test_slice_reverse_step(self):
+        data = {"items": [0, 1, 2, 3, 4]}
+        assert JSONPath("$.items[::-2]").parse(data) == [4, 2, 0]
+
+    def test_slice_negative_start(self):
+        data = {"items": [0, 1, 2, 3, 4]}
+        assert JSONPath("$.items[-2:]").parse(data) == [3, 4]
+
+    def test_slice_negative_end(self):
+        data = {"items": [0, 1, 2, 3, 4]}
+        assert JSONPath("$.items[:-2]").parse(data) == [0, 1, 2]
+
+
+class TestFilterAdvanced:
+    """Test advanced filter operations."""
+
+    def test_filter_not_in_operator(self):
+        data = {"items": [{"tags": ["a", "b"]}, {"tags": ["c", "d"]}]}
+        assert JSONPath("$.items[?('a' not in @.tags)].tags").parse(data) == [["c", "d"]]
+
+    def test_filter_not_operator(self):
+        data = {"items": [{"active": True}, {"active": False}]}
+        assert JSONPath("$.items[?(not @.active)]").parse(data) == [{"active": False}]
+
+    def test_filter_is_operator(self):
+        data = {"items": [{"v": None}, {"v": 1}]}
+        assert JSONPath("$.items[?(@.v is None)]").parse(data) == [{"v": None}]
+
+    def test_filter_is_not_operator(self):
+        data = {"items": [{"v": None}, {"v": 1}]}
+        assert JSONPath("$.items[?(@.v is not None)]").parse(data) == [{"v": 1}]
+
+    def test_filter_nested_attribute(self):
+        data = {"items": [{"x": {"y": 1}}, {"x": {"y": 2}}]}
+        assert JSONPath("$.items[?(@.x.y > 1)]").parse(data) == [{"x": {"y": 2}}]
+
+    def test_filter_bracket_notation(self):
+        data = {"items": [{"a-b": 1}, {"a-b": 2}]}
+        assert JSONPath("$.items[?(@['a-b'] > 1)]").parse(data) == [{"a-b": 2}]
+
+
+class TestRecursiveDescentAdvanced:
+    """Test advanced recursive descent operations."""
+
+    def test_recursive_with_bracket(self):
+        data = {"a": {"b": 1}, "c": {"b": 2}}
+        assert sorted(JSONPath("$..['b']").parse(data)) == [1, 2]
+
+    def test_recursive_with_filter(self):
+        data = {"items": [{"v": 1}, {"v": 2}]}
+        result = JSONPath("$.items[*][?(@.v > 1)]").parse(data)
+        assert result == [{"v": 2}]
+
+    def test_recursive_multiple_levels(self):
+        data = {"a": {"b": {"c": {"d": 1}}}}
+        assert JSONPath("$..d").parse(data) == [1]
+
+
+class TestJSONPathTypeError:
+    """Test JSONPathTypeError exception."""
+
+    def test_sort_incompatible_types(self):
+        from jsonpath import JSONPathTypeError
+
+        # Sorting with mixed types that can't be compared
+        data = {"items": [{"v": "a"}, {"v": 1}]}
+        with pytest.raises(JSONPathTypeError, match="not possible to compare"):
+            JSONPath("$.items[/(v)]").parse(data)
+
+
+class TestInstanceMethod:
+    """Test JSONPath instance methods."""
+
+    def test_search_method(self):
+        """JSONPath.search() is an alias for parse()."""
+        data = {"a": 1}
+        jp = JSONPath("$.a")
+        assert jp.search(data) == [1]
+        assert jp.search(data, "PATH") == ["$.a"]
+
+    def test_parse_reuse(self):
+        """Same JSONPath instance can be reused for multiple parse calls."""
+        jp = JSONPath("$.a")
+        assert jp.parse({"a": 1}) == [1]
+        assert jp.parse({"a": 2}) == [2]
+        assert jp.parse({"a": 3}) == [3]

@@ -1,3 +1,10 @@
+## [1.1.5](https://github.com/sean2077/jsonpath-python/compare/1.1.4...1.1.5) (2026-03-17)
+
+### Fixes
+
+* Python 3.8 AST compatibility and ruff formatting ([04199c5](https://github.com/sean2077/jsonpath-python/commit/04199c5d72836ce4e404d5fc248ddef7d034224d))
+* **security:** prevent RCE via eval() in filter expressions ([#21](https://github.com/sean2077/jsonpath-python/issues/21), [#20](https://github.com/sean2077/jsonpath-python/issues/20)) ([07e2c11](https://github.com/sean2077/jsonpath-python/commit/07e2c113bd7d3f7ec600ebcfa2298a65a19d8d2a))
+
 ## [1.1.4](https://github.com/sean2077/jsonpath-python/compare/1.1.3...1.1.4) (2025-11-25)
 
 ### Fixes

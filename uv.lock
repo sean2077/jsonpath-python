@@ -400,7 +400,7 @@ wheels = [
 
 [[package]]
 name = "jsonpath-python"
-version = "1.1.4"
+version = "1.1.5"
 source = { editable = "." }
 
 [package.optional-dependencies]

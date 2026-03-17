@@ -93,9 +93,7 @@ class TestIssue20BareAtFilter:
     def test_bare_at_regex(self):
         """Bare @ should work with regex matching."""
         data = {"tags": ["web", "owasp:software_and_data_integrity_failures"]}
-        assert JSONPath("$.tags[?(@ =~ /owasp:.+/)]").parse(data) == [
-            "owasp:software_and_data_integrity_failures"
-        ]
+        assert JSONPath("$.tags[?(@ =~ /owasp:.+/)]").parse(data) == ["owasp:software_and_data_integrity_failures"]
 
     def test_bare_at_in_operator(self):
         """Bare @ with 'in' operator."""

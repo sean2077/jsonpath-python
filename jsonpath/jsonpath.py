@@ -165,6 +165,8 @@ class JSONPath:
             # Context
             ast.Load,
         }
+        # Python 3.8 compatibility: deprecated AST nodes removed in 3.12
+        | {getattr(ast, n) for n in ("Index", "Num", "Str", "Bytes", "NameConstant") if hasattr(ast, n)}
     )
     _ALLOWED_NAMES = frozenset({"__obj", "len", "RegexPattern"})
     _ALLOWED_CALLS = frozenset({"len", "RegexPattern"})

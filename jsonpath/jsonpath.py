@@ -16,6 +16,7 @@ Example:
     [10]
 """
 
+import ast
 import logging
 import os
 import re
@@ -111,6 +112,62 @@ class JSONPath:
     REP_REGEX_PATTERN = re.compile(r"=~\s*/(.*?)/")
     REP_ATTR_PATH = re.compile(r"\.(\w+|'[^']*'|\"[^\"]*\")")
     REP_DOTDOT_BRACKET = re.compile(r"\.(\.#B)")
+    REP_BARE_AT = re.compile(r"(?<!\w)@(?![.\[\w])")
+
+    # Safe expression evaluation: allowed AST node types for filter expressions
+    _ALLOWED_AST_NODES = frozenset(
+        {
+            ast.Expression,
+            # Boolean operators
+            ast.BoolOp,
+            ast.And,
+            ast.Or,
+            # Binary operators
+            ast.BinOp,
+            ast.Add,
+            ast.Sub,
+            ast.Mult,
+            ast.Div,
+            ast.FloorDiv,
+            ast.Mod,
+            ast.MatMult,
+            # Unary operators
+            ast.UnaryOp,
+            ast.Not,
+            ast.UAdd,
+            ast.USub,
+            # Comparisons
+            ast.Compare,
+            ast.Eq,
+            ast.NotEq,
+            ast.Lt,
+            ast.LtE,
+            ast.Gt,
+            ast.GtE,
+            ast.Is,
+            ast.IsNot,
+            ast.In,
+            ast.NotIn,
+            # Values and names
+            ast.Constant,
+            ast.Name,
+            # Subscripts
+            ast.Subscript,
+            ast.Slice,
+            # Collections
+            ast.List,
+            ast.Tuple,
+            ast.Dict,
+            # Attribute access (validated separately)
+            ast.Attribute,
+            # Function calls (validated separately)
+            ast.Call,
+            # Context
+            ast.Load,
+        }
+    )
+    _ALLOWED_NAMES = frozenset({"__obj", "len", "RegexPattern"})
+    _ALLOWED_CALLS = frozenset({"len", "RegexPattern"})
 
     def __init__(self, expr: str):
         """Initialize JSONPath with an expression.
@@ -124,7 +181,7 @@ class JSONPath:
         self.lpath = 0
         self.result = []
         self.result_type = "VALUE"
-        self.eval_func = eval
+        self._custom_eval_func = None
 
         expr = self._parse_expr(expr)
         self.segments = [s for s in expr.split(JSONPath.SEP) if s]
@@ -132,7 +189,7 @@ class JSONPath:
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"segments  : {self.segments}")
 
-    def parse(self, obj, result_type="VALUE", eval_func=eval):
+    def parse(self, obj, result_type="VALUE", eval_func=None):
         """Parse JSON object using the JSONPath expression.
 
         Args:
@@ -140,7 +197,10 @@ class JSONPath:
             result_type: Type of result to return
                 - 'VALUE': Return matched values (default)
                 - 'PATH': Return JSONPath strings of matched locations
-            eval_func: Custom eval function for filter expressions (default: builtin eval)
+            eval_func: Custom eval function for filter expressions.
+                If None (default), uses a safe expression evaluator that
+                prevents code injection. Pass a custom function only if
+                you trust the JSONPath expressions being evaluated.
 
         Returns:
             List of matched values or paths depending on result_type
@@ -155,7 +215,7 @@ class JSONPath:
         if result_type not in JSONPath.RESULT_TYPE:
             raise ValueError(f"result_type must be one of {tuple(JSONPath.RESULT_TYPE.keys())}")
         self.result_type = result_type
-        self.eval_func = eval_func
+        self._custom_eval_func = eval_func
 
         # Reset state for each parse call
         self.result = []
@@ -257,6 +317,7 @@ class JSONPath:
 
     @staticmethod
     def _gen_obj(m):
+        is_len = m.group(2) is not None
         content = m.group(1) or m.group(2)  # group 2 is for len()
 
         def repl(m):
@@ -266,7 +327,10 @@ class JSONPath:
             return f"['{g}']"
 
         content = JSONPath.REP_ATTR_PATH.sub(repl, content)
-        return "__obj" + content
+        result = "__obj" + content
+        if is_len:
+            result = f"len({result})"
+        return result
 
     @staticmethod
     def _build_path(path: str, key) -> str:
@@ -382,6 +446,66 @@ class JSONPath:
         except TypeError as e:
             raise JSONPathTypeError(f"not possible to compare str and int when sorting: {e}") from e
 
+    @staticmethod
+    def _validate_filter_expr(expr):
+        """Validate that a filter expression only contains safe AST constructs.
+
+        Raises ValueError if the expression contains potentially dangerous
+        constructs like function calls (except len/RegexPattern), attribute
+        access to dunder names, or disallowed node types.
+        """
+        try:
+            tree = ast.parse(expr, mode="eval")
+        except SyntaxError as e:
+            raise ValueError(f"Invalid filter expression syntax: {e}") from e
+
+        for node in ast.walk(tree):
+            node_type = type(node)
+            if node_type not in JSONPath._ALLOWED_AST_NODES:
+                raise ValueError(f"Disallowed expression construct: {node_type.__name__}")
+            if node_type is ast.Name and node.id not in JSONPath._ALLOWED_NAMES:
+                raise ValueError(f"Disallowed name in filter expression: {node.id}")
+            if node_type is ast.Attribute and node.attr.startswith("_"):
+                raise ValueError(f"Disallowed attribute access: {node.attr}")
+            if node_type is ast.Call:
+                if not (isinstance(node.func, ast.Name) and node.func.id in JSONPath._ALLOWED_CALLS):
+                    raise ValueError("Only len() and RegexPattern() calls are allowed in filter expressions")
+
+    @staticmethod
+    def _safe_eval_filter(expr, obj):
+        """Safely evaluate a filter expression against an object.
+
+        Validates the expression AST before evaluation and uses a restricted
+        namespace with no access to Python builtins (defense-in-depth for
+        the RCE fix — AST validation is the primary gate, restricted
+        __builtins__ is the secondary gate).
+        """
+        JSONPath._validate_filter_expr(expr)
+        # fmt: off
+        return eval(expr, {"__builtins__": {}}, {"__obj": obj, "RegexPattern": RegexPattern, "len": len})  # noqa: S307 — safe: AST-validated, builtins stripped
+        # fmt: on
+
+    @staticmethod
+    def _parse_slice(s):
+        """Parse a slice expression string into a slice object.
+
+        Args:
+            s: Slice string like '1:3', '::2', '-1:', etc.
+
+        Returns:
+            A slice object
+        """
+        parts = s.split(":")
+
+        def to_int(v):
+            v = v.strip()
+            return int(v) if v else None
+
+        start = to_int(parts[0]) if len(parts) > 0 else None
+        stop = to_int(parts[1]) if len(parts) > 1 else None
+        step = to_int(parts[2]) if len(parts) > 2 else None
+        return slice(start, stop, step)
+
     def _filter(self, obj, i: int, path: str, step: str):
         """Evaluate filter expression and continue trace if condition is true.
 
@@ -393,7 +517,10 @@ class JSONPath:
         """
         r = False
         try:
-            r = self.eval_func(step, None, {"__obj": obj, "RegexPattern": RegexPattern})
+            if self._custom_eval_func is not None:
+                r = self._custom_eval_func(step, None, {"__obj": obj, "RegexPattern": RegexPattern})
+            else:
+                r = self._safe_eval_filter(step, obj)
         except Exception:
             pass
         if r:
@@ -450,8 +577,8 @@ class JSONPath:
 
         # slice
         if isinstance(obj, list) and JSONPath.REP_SLICE_CONTENT.fullmatch(step):
-            obj = list(enumerate(obj))
-            vals = self.eval_func(f"obj[{step}]")
+            indexed = list(enumerate(obj))
+            vals = indexed[self._parse_slice(step)]
             for idx, v in vals:
                 self._trace(v, i + 1, f"{path}[{idx}]")
             return
@@ -470,6 +597,10 @@ class JSONPath:
                 # filter
                 step = step[2:-1]
                 step = JSONPath.REP_FILTER_CONTENT.sub(self._gen_obj, step)
+                # Replace bare @ (current element reference) with __obj
+                # Must happen after REP_FILTER_CONTENT (handles @.x, @[x])
+                # and before REP_REGEX_PATTERN (introduces @ as matmul operator)
+                step = JSONPath.REP_BARE_AT.sub("__obj", step)
 
                 if "=~" in step:
                     step = JSONPath.REP_REGEX_PATTERN.sub(r"@ RegexPattern(r'\1')", step)

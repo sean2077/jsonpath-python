@@ -3,6 +3,134 @@ import pytest
 from jsonpath import JSONPath, JSONPathTypeError
 
 
+class TestIssue21Security:
+    """Issue #21: CVE - Remote Code Execution via eval() in filter expressions."""
+
+    def test_import_blocked(self):
+        """__import__() calls in filter expressions should be blocked."""
+        data = {"users": [{"name": "Alice"}]}
+        result = JSONPath('$.users[?(__import__("os"))]').parse(data)
+        assert result == []
+
+    def test_os_system_blocked(self):
+        """os.system() calls via __import__ should be blocked."""
+        data = {"users": [{"name": "Alice"}]}
+        result = JSONPath('$.users[?(__import__("os").system("echo PWNED"))]').parse(data)
+        assert result == []
+
+    def test_builtins_open_blocked(self):
+        """open() calls should be blocked."""
+        data = {"users": [{"name": "Alice"}]}
+        result = JSONPath('$.users[?(__import__("builtins").open("/etc/passwd"))]').parse(data)
+        assert result == []
+
+    def test_type_function_blocked(self):
+        """type() calls should be blocked."""
+        data = {"users": [{"name": "Alice"}]}
+        result = JSONPath("$.users[?(type(__obj) == dict)]").parse(data)
+        assert result == []
+
+    def test_dunder_attribute_blocked(self):
+        """Access to __class__, __bases__, etc. should be blocked."""
+        data = {"users": [{"name": "Alice"}]}
+        result = JSONPath("$.users[?(@.__class__)]").parse(data)
+        assert result == []
+
+    def test_class_subclasses_blocked(self):
+        """Sandbox escape via __class__.__subclasses__ should be blocked."""
+        data = [1, 2, 3]
+        result = JSONPath("$[?(@.__class__.__bases__[0].__subclasses__())]").parse(data)
+        assert result == []
+
+    def test_legitimate_filters_still_work(self):
+        """Normal filter operations should still work after security fix."""
+        data = {"items": [{"v": 1}, {"v": 2}, {"v": 3}]}
+        assert JSONPath("$.items[?(@.v > 1)].v").parse(data) == [2, 3]
+        assert JSONPath("$.items[?(@.v == 2)].v").parse(data) == [2]
+        assert JSONPath("$.items[?(@.v >= 1 and @.v <= 2)].v").parse(data) == [1, 2]
+
+    def test_len_allowed(self):
+        """len() should still be allowed in filter expressions."""
+        data = {"items": [{"tags": ["a", "b"]}, {"tags": ["c"]}]}
+        assert JSONPath("$.items[?(len(@.tags) > 1)]").parse(data) == [{"tags": ["a", "b"]}]
+
+    def test_regex_still_works(self):
+        """Regex matching should still work after security fix."""
+        data = {"items": [{"name": "apple"}, {"name": "banana"}]}
+        assert JSONPath("$.items[?(@.name =~ /^app/)].name").parse(data) == ["apple"]
+
+    def test_custom_eval_func_opt_in(self):
+        """Users can opt in to custom eval via eval_func parameter."""
+        data = {"items": [{"v": 1}, {"v": 2}]}
+        jp = JSONPath("$.items[?(@.v > 0)]")
+
+        calls = []
+
+        def custom_eval_fn(expr, *args, **kwargs):  # noqa: S307
+            calls.append(expr)
+            return __builtins__["eval"](expr, *args, **kwargs)  # noqa: S307
+
+        result = jp.parse(data, eval_func=custom_eval_fn)
+        assert len(result) == 2
+        assert len(calls) > 0
+
+
+class TestIssue20BareAtFilter:
+    """Issue #20: Filtering primitive arrays with bare @ reference."""
+
+    def test_bare_at_string_equality(self):
+        """$.tags[?(@ == 'web')] should work on string arrays."""
+        data = {"tags": ["web", "test2"]}
+        assert JSONPath("$.tags[?(@ == 'web')]").parse(data) == ["web"]
+
+    def test_bare_at_numeric_comparison(self):
+        """Bare @ should work for numeric comparisons."""
+        data = {"nums": [1, 5, 10, 15]}
+        assert JSONPath("$.nums[?(@ > 5)]").parse(data) == [10, 15]
+        assert JSONPath("$.nums[?(@ >= 10)]").parse(data) == [10, 15]
+        assert JSONPath("$.nums[?(@ == 5)]").parse(data) == [5]
+
+    def test_bare_at_regex(self):
+        """Bare @ should work with regex matching."""
+        data = {"tags": ["web", "owasp:software_and_data_integrity_failures"]}
+        assert JSONPath("$.tags[?(@ =~ /owasp:.+/)]").parse(data) == [
+            "owasp:software_and_data_integrity_failures"
+        ]
+
+    def test_bare_at_in_operator(self):
+        """Bare @ with 'in' operator."""
+        data = {"items": ["apple", "banana", "cherry"]}
+        assert JSONPath("$.items[?('an' in @)]").parse(data) == ["banana"]
+
+    def test_bare_at_on_root_array(self):
+        """Bare @ on a root-level array."""
+        data = [1, 2, 3, 4, 5]
+        assert JSONPath("$[?(@ > 3)]").parse(data) == [4, 5]
+
+    def test_bare_at_does_not_affect_dotted_access(self):
+        """Dotted @ access should still work as before."""
+        data = {"items": [{"v": 1}, {"v": 2}, {"v": 3}]}
+        assert JSONPath("$.items[?(@.v > 1)].v").parse(data) == [2, 3]
+
+
+class TestIssue19KeyExistence:
+    """Issue #19: Key existence check works via truthiness."""
+
+    def test_key_existence_with_and(self):
+        data = [
+            {"id": "room1", "type": "HotelRoom", "temperature": {"type": "Number"}},
+            {"id": "room2", "type": "HotelRoom", "co2": {"type": "Number"}},
+        ]
+        result = JSONPath('$[?(@.type == "HotelRoom" and @.co2)]').parse(data)
+        assert len(result) == 1
+        assert result[0]["id"] == "room2"
+
+    def test_key_existence_simple(self):
+        data = [{"a": 1, "b": 2}, {"a": 3}]
+        result = JSONPath("$[?(@.b)]").parse(data)
+        assert result == [{"a": 1, "b": 2}]
+
+
 def test_issue_17():
     data = [
         {"time": "2023-01-02T20:32:01Z", "user": "user1"},

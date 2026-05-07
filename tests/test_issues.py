@@ -59,6 +59,48 @@ class TestIssue21Security:
         data = {"items": [{"name": "apple"}, {"name": "banana"}]}
         assert JSONPath("$.items[?(@.name =~ /^app/)].name").parse(data) == ["apple"]
 
+    def test_regex_pattern_with_quote_still_works(self):
+        """Quotes in regex patterns are data, not Python string delimiters."""
+        data = {"items": [{"name": "O'Reilly"}, {"name": "Other"}]}
+        assert JSONPath("$.items[?(@.name =~ /O'Reilly/)].name").parse(data) == ["O'Reilly"]
+
+    def test_regex_pattern_cannot_append_filter_logic(self):
+        """Regex pattern text must not be able to append filter clauses."""
+        data = {
+            "users": [
+                {"name": "alice", "tenant": "public"},
+                {"name": "bob", "tenant": "public"},
+                {"name": "carol", "tenant": "secret"},
+            ]
+        }
+
+        result = JSONPath("$..users[?(@.tenant =~ /zzz') or len(__obj) > 0 or RegexPattern('zzz/)]").parse(data)
+
+        assert result == []
+
+    def test_regex_pattern_cannot_append_conditional_filter_logic(self):
+        """Injected comparisons in a regex pattern must stay regex data."""
+        data = {
+            "users": [
+                {"name": "alice", "tenant": "public"},
+                {"name": "carol", "tenant": "secret"},
+            ]
+        }
+
+        result = JSONPath("$..users[?(@.tenant =~ /zzz') or __obj['tenant'] == 'secret' or RegexPattern('zzz/)]").parse(
+            data
+        )
+
+        assert result == []
+
+    def test_regex_placeholder_name_is_not_a_filter_variable(self):
+        """Generated regex placeholders are only valid as regex-match operands."""
+        data = {"items": [{"name": "apple"}, {"name": "banana"}]}
+
+        result = JSONPath("$.items[?(@.name =~ /^app/ or __jsonpath_regex_0)].name").parse(data)
+
+        assert result == []
+
     def test_custom_eval_func_opt_in(self):
         """Users can opt in to custom eval via eval_func parameter."""
         data = {"items": [{"v": 1}, {"v": 2}]}
@@ -73,6 +115,23 @@ class TestIssue21Security:
         result = jp.parse(data, eval_func=custom_eval_fn)
         assert len(result) == 2
         assert len(calls) > 0
+
+    def test_custom_eval_func_receives_regex_bindings(self):
+        """Custom eval functions receive bound regex pattern objects."""
+        data = {"items": [{"name": "apple"}, {"name": "banana"}]}
+        jp = JSONPath("$.items[?(@.name =~ /^app/)].name")
+
+        calls = []
+
+        def custom_eval_fn(expr, *args, **kwargs):  # noqa: S307
+            calls.append((expr, args, kwargs))
+            return __builtins__["eval"](expr, *args, **kwargs)  # noqa: S307
+
+        result = jp.parse(data, eval_func=custom_eval_fn)
+
+        assert result == ["apple"]
+        assert calls[0][0] == "__obj['name'] @ __jsonpath_regex_0"
+        assert calls[0][1][1]["__jsonpath_regex_0"].pattern == "^app"
 
 
 class TestIssue20BareAtFilter:

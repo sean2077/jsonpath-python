@@ -113,6 +113,7 @@ class JSONPath:
     REP_ATTR_PATH = re.compile(r"\.(\w+|'[^']*'|\"[^\"]*\")")
     REP_DOTDOT_BRACKET = re.compile(r"\.(\.#B)")
     REP_BARE_AT = re.compile(r"(?<!\w)@(?![.\[\w])")
+    REGEX_BINDING_PREFIX = "__jsonpath_regex_"
 
     # Safe expression evaluation: allowed AST node types for filter expressions
     _ALLOWED_AST_NODES = frozenset(
@@ -449,7 +450,7 @@ class JSONPath:
             raise JSONPathTypeError(f"not possible to compare str and int when sorting: {e}") from e
 
     @staticmethod
-    def _validate_filter_expr(expr):
+    def _validate_filter_expr(expr, extra_names=None):
         """Validate that a filter expression only contains safe AST constructs.
 
         Raises ValueError if the expression contains potentially dangerous
@@ -461,12 +462,26 @@ class JSONPath:
         except SyntaxError as e:
             raise ValueError(f"Invalid filter expression syntax: {e}") from e
 
+        extra_names = frozenset(extra_names or ())
+        regex_operand_nodes = {
+            id(node.right)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.BinOp)
+            and isinstance(node.op, ast.MatMult)
+            and isinstance(node.right, ast.Name)
+            and node.right.id in extra_names
+        }
+
         for node in ast.walk(tree):
             node_type = type(node)
             if node_type not in JSONPath._ALLOWED_AST_NODES:
                 raise ValueError(f"Disallowed expression construct: {node_type.__name__}")
-            if node_type is ast.Name and node.id not in JSONPath._ALLOWED_NAMES:
-                raise ValueError(f"Disallowed name in filter expression: {node.id}")
+            if node_type is ast.Name:
+                if node.id in extra_names:
+                    if id(node) not in regex_operand_nodes:
+                        raise ValueError(f"Regex binding is only allowed as a regex operand: {node.id}")
+                elif node.id not in JSONPath._ALLOWED_NAMES:
+                    raise ValueError(f"Disallowed name in filter expression: {node.id}")
             if node_type is ast.Attribute and node.attr.startswith("_"):
                 raise ValueError(f"Disallowed attribute access: {node.attr}")
             if node_type is ast.Call:
@@ -474,7 +489,7 @@ class JSONPath:
                     raise ValueError("Only len() and RegexPattern() calls are allowed in filter expressions")
 
     @staticmethod
-    def _safe_eval_filter(expr, obj):
+    def _safe_eval_filter(expr, obj, regex_patterns=None):
         """Safely evaluate a filter expression against an object.
 
         Validates the expression AST before evaluation and uses a restricted
@@ -482,9 +497,12 @@ class JSONPath:
         the RCE fix — AST validation is the primary gate, restricted
         __builtins__ is the secondary gate).
         """
-        JSONPath._validate_filter_expr(expr)
+        regex_patterns = regex_patterns or {}
+        JSONPath._validate_filter_expr(expr, regex_patterns)
+        eval_locals = {"__obj": obj, "RegexPattern": RegexPattern, "len": len}
+        eval_locals.update({name: RegexPattern(pattern) for name, pattern in regex_patterns.items()})
         # fmt: off
-        return eval(expr, {"__builtins__": {}}, {"__obj": obj, "RegexPattern": RegexPattern, "len": len})  # noqa: S307 — safe: AST-validated, builtins stripped
+        return eval(expr, {"__builtins__": {}}, eval_locals)  # noqa: S307 — safe: AST-validated, builtins stripped
         # fmt: on
 
     @staticmethod
@@ -508,7 +526,18 @@ class JSONPath:
         step = to_int(parts[2]) if len(parts) > 2 else None
         return slice(start, stop, step)
 
-    def _filter(self, obj, i: int, path: str, step: str):
+    @staticmethod
+    def _replace_regex_patterns(step: str):
+        regex_patterns = {}
+
+        def replace(match):
+            name = f"{JSONPath.REGEX_BINDING_PREFIX}{len(regex_patterns)}"
+            regex_patterns[name] = match.group(1)
+            return f"@ {name}"
+
+        return JSONPath.REP_REGEX_PATTERN.sub(replace, step), regex_patterns
+
+    def _filter(self, obj, i: int, path: str, step: str, regex_patterns=None):
         """Evaluate filter expression and continue trace if condition is true.
 
         Args:
@@ -516,13 +545,17 @@ class JSONPath:
             i: Next segment index to trace
             path: Current JSONPath string
             step: Python expression string to evaluate
+            regex_patterns: Regex binding names mapped to raw pattern strings
         """
         r = False
         try:
+            regex_patterns = regex_patterns or {}
             if self._custom_eval_func is not None:
-                r = self._custom_eval_func(step, None, {"__obj": obj, "RegexPattern": RegexPattern})
+                eval_locals = {"__obj": obj, "RegexPattern": RegexPattern, "len": len}
+                eval_locals.update({name: RegexPattern(pattern) for name, pattern in regex_patterns.items()})
+                r = self._custom_eval_func(step, None, eval_locals)
             else:
-                r = self._safe_eval_filter(step, obj)
+                r = self._safe_eval_filter(step, obj, regex_patterns)
         except Exception:
             pass
         if r:
@@ -604,12 +637,13 @@ class JSONPath:
                 # and before REP_REGEX_PATTERN (introduces @ as matmul operator)
                 step = JSONPath.REP_BARE_AT.sub("__obj", step)
 
+                regex_patterns = None
                 if "=~" in step:
-                    step = JSONPath.REP_REGEX_PATTERN.sub(r"@ RegexPattern(r'\1')", step)
+                    step, regex_patterns = JSONPath._replace_regex_patterns(step)
 
                 if isinstance(obj, dict):
-                    self._filter(obj, i + 1, path, step)
-                self._traverse(self._filter, obj, i + 1, path, step)
+                    self._filter(obj, i + 1, path, step, regex_patterns)
+                self._traverse(self._filter, obj, i + 1, path, step, regex_patterns)
                 return
 
             if step.startswith("/("):

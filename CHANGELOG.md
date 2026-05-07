@@ -1,3 +1,9 @@
+## [1.1.6](https://github.com/sean2077/jsonpath-python/compare/1.1.5...1.1.6) (2026-05-07)
+
+### Fixes
+
+* **security:** prevent regex filter injection ([4973594](https://github.com/sean2077/jsonpath-python/commit/4973594da98844157d78791b6e0cdc51e42a8698))
+
 ## [1.1.5](https://github.com/sean2077/jsonpath-python/compare/1.1.4...1.1.5) (2026-03-17)
 
 ### Fixes
